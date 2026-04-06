@@ -559,7 +559,9 @@ function saveSettings(s) { localStorage.setItem('mcSettings', JSON.stringify(s))
 
 function getMode() { return getSettings().mode || null; }
 function getApiKey() { return getSettings().apiKey || ''; }
-function getGeminiApiKey() { return getSettings().geminiApiKey || ''; }
+// 데모용 기본 Gemini API 키 (팀 공용, 데모 후 삭제 예정)
+const DEFAULT_GEMINI_KEY = 'AIzaSyDAgJtdCAt9BeeRBGp9cLOJT5kPhm8b1hs';
+function getGeminiApiKey() { return getSettings().geminiApiKey || DEFAULT_GEMINI_KEY; }
 
 function todayStr() {
   const n = new Date();
