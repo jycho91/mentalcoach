@@ -560,7 +560,7 @@ function saveSettings(s) { localStorage.setItem('mcSettings', JSON.stringify(s))
 function getMode() { return getSettings().mode || null; }
 function getApiKey() { return getSettings().apiKey || ''; }
 // 데모용 기본 Gemini API 키 (팀 공용, 데모 후 삭제 예정)
-const DEFAULT_GEMINI_KEY = 'AIzaSyDAgJtdCAt9BeeRBGp9cLOJT5kPhm8b1hs';
+const DEFAULT_GEMINI_KEY = 'AIzaSyDCT4PcbrjnlDae9TQMAeI1-JSXenskzj8';
 function getGeminiApiKey() { return getSettings().geminiApiKey || DEFAULT_GEMINI_KEY; }
 
 function todayStr() {
@@ -981,7 +981,7 @@ async function callGemini(userMessage) {
   // 최근 10턴만 유지
   const recentHistory = chatHistory.slice(-20);
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
