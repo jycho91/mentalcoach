@@ -1,0 +1,24 @@
+/* 기본 설정 */
+:root {
+  --color-primary: #7c6fcd;   /* 보라 — 메인 컬러 */
+  --color-success: #52b788;   /* 초록 — 완료/성공 */
+  --color-emotion: #e07b9a;   /* 로즈 — 감정 */
+  --color-bg: #f8f7ff;
+  --color-text: #2d2d2d;
+  --max-width: 680px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 16px;
+}
