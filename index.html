@@ -384,6 +384,9 @@
       <button class="btn btn-primary btn-full" style="margin-top: 16px;" onclick="startSelectedChat()">대화 시작하기</button>
     </div>
 
+    <!-- 이전 대화 기록 -->
+    <div id="chat-log-list" style="margin-top: 24px;"></div>
+
     <!-- 채팅 UI (대화 중) -->
     <div id="chat-area" class="chat-container" style="display: none;">
       <div id="chat-mode-badge" style="text-align:center; padding: 8px 0 4px; font-size: 13px; color: var(--text-secondary);"></div>
@@ -1069,6 +1072,7 @@ function resetChat() {
   chatHistory = [];
   document.getElementById('chat-mode-select').style.display = 'block';
   document.getElementById('chat-area').style.display = 'none';
+  renderChatLogList();
 }
 
 function appendChatBubble(role, text) {
@@ -1147,10 +1151,41 @@ function saveChatToHistory(userMsg, aiMsg) {
 }
 
 function renderChatPage() {
-  // 채팅 페이지 진입 시 초기화
   if (!chatMode) {
     resetChat();
   }
+  renderChatLogList();
+}
+
+function renderChatLogList() {
+  const data = getData();
+  const logs = data.chatLogs || {};
+  const container = document.getElementById('chat-log-list');
+  if (!container) return;
+
+  const dates = Object.keys(logs).sort((a, b) => b.localeCompare(a));
+  if (dates.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = `<div style="font-size:13px; font-weight:700; color:var(--text-secondary); margin-bottom:10px;">이전 대화 기록</div>` +
+    dates.map(date => {
+      const pairs = Math.floor(logs[date].length / 2);
+      return `<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 13px; border:1.5px solid var(--border); border-radius:10px; margin-bottom:8px; font-size:13px;">
+        <span>📅 ${formatDate(date)} <span style="color:var(--text-muted); margin-left:6px;">${pairs}개 대화</span></span>
+        <button onclick="deleteChatLog('${date}')" style="background:none; border:none; color:var(--danger,#e05); font-size:12px; cursor:pointer; padding:4px 8px; border-radius:6px; border:1px solid currentColor;">삭제</button>
+      </div>`;
+    }).join('');
+}
+
+function deleteChatLog(date) {
+  if (!confirm(`${formatDate(date)} 대화 기록을 삭제할까요?`)) return;
+  const data = getData();
+  if (data.chatLogs) delete data.chatLogs[date];
+  saveData(data);
+  renderChatLogList();
+  showToast('삭제되었습니다.');
 }
 
 // ═══════════════════════════════════════════
