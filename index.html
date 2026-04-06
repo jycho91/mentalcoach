@@ -1,55 +1,1456 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>마음 코치</title>
-  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f7f5f2; --surface: #ffffff;
+      --primary: #7c6fcd; --primary-light: #ede9ff; --primary-dark: #5a4fb3;
+      --success: #52b788; --success-light: #d8f3dc;
+      --warn: #f4a261; --warn-light: #fff0e0;
+      --rose: #e07b9a; --rose-light: #fce8ef;
+      --teal: #4db8b0; --teal-light: #e0f5f4;
+      --text: #2d2d2d; --text-muted: #888;
+      --border: #e8e4df; --radius: 14px;
+      --shadow: 0 2px 16px rgba(0,0,0,0.07);
+      --quant-bg: #e8f0fe; --ai-bg: #ede9ff;
+    }
+    body.dark {
+      --bg: #0f0f1a; --surface: #1a1a2e;
+      --primary: #9d8ff0; --primary-light: #252040; --primary-dark: #c0b4ff;
+      --success: #4aad78; --success-light: #152b20;
+      --warn: #f0a060; --warn-light: #2e1a08;
+      --rose: #e08aaa; --rose-light: #2e1522;
+      --teal: #4db8b0; --teal-light: #0e2624;
+      --text: #e8e6f0; --text-muted: #7a7a9a;
+      --border: #2a2a40; --shadow: 0 2px 16px rgba(0,0,0,0.4);
+      --quant-bg: #1a2540; --ai-bg: #252040;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background .3s,color .3s; }
+
+    /* NAV */
+    nav {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 16px; display: flex; align-items: center;
+      height: 58px; position: sticky; top: 0; z-index: 200;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.06); gap: 10px;
+      transition: background .3s, border-color .3s;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--primary); white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+    .nav-tabs { display: flex; gap: 2px; overflow-x: auto; flex: 1; }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      padding: 7px 12px; border-radius: 8px; border: none;
+      background: transparent; color: var(--text-muted); font-size: 13px;
+      font-weight: 500; cursor: pointer; transition: all .2s; white-space: nowrap; font-family: inherit;
+    }
+    .nav-tab.active { background: var(--primary-light); color: var(--primary); }
+    .nav-tab:hover:not(.active) { background: var(--bg); }
+    .nav-icon-btn {
+      background: none; border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 6px 9px; font-size: 15px; cursor: pointer; transition: all .2s; flex-shrink: 0; line-height: 1;
+    }
+    .nav-icon-btn:hover { border-color: var(--primary); }
+
+    /* LAYOUT */
+    main { max-width: 680px; margin: 28px auto; padding: 0 18px; }
+    .page { display: none; }
+    .page.active { display: block; animation: fadeIn .22s ease; }
+
+    /* CARD */
+    .card { background: var(--surface); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); margin-bottom: 14px; transition: background .3s; }
+
+    /* TEXT */
+    .page-title { font-size: 21px; font-weight: 700; margin-bottom: 5px; }
+    .page-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 22px; line-height: 1.55; }
+    .section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 11px; }
+
+    /* INPUTS */
+    .input-row { display: flex; gap: 9px; }
+    input[type="text"], input[type="date"], input[type="password"], textarea, select {
+      width: 100%; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 14px; font-family: inherit; color: var(--text); background: var(--bg);
+      outline: none; transition: border .2s, background .3s, color .3s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); background: var(--surface); }
+    textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+
+    /* BUTTONS */
+    .btn { padding: 11px 18px; border-radius: 10px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; white-space: nowrap; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { filter: brightness(0.92); }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-danger { background: transparent; color: #e05252; border: none; padding: 6px 9px; font-size: 12px; }
+    .btn-danger:hover { background: #fff0f0; border-radius: 6px; }
+    .btn-sm { padding: 7px 13px; font-size: 12px; }
+    .btn-full { width: 100%; padding: 13px; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+    /* TAG / BADGE */
+    .tag { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--primary-light); color: var(--primary); }
+    .status-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+    .badge-done { background: var(--success); color: #fff; }
+    .badge-skip { background: var(--warn); color: #fff; }
+    .badge-pending { background: var(--border); color: var(--text-muted); }
+
+    /* CHIPS */
+    .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { padding: 4px 11px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .chip-theme { background: var(--primary-light); color: var(--primary); }
+    .chip-emotion { background: var(--rose-light); color: var(--rose); }
+    .chip-action { background: var(--success-light); color: var(--success); }
+    .chip-warn { background: var(--warn-light); color: var(--warn); }
+    .chip-teal { background: var(--teal-light); color: var(--teal); }
+
+    /* ACTION ITEMS */
+    .action-list { display: flex; flex-direction: column; gap: 9px; }
+    .action-item { display: flex; align-items: center; justify-content: space-between; padding: 13px 15px; background: var(--bg); border-radius: 10px; border: 1.5px solid var(--border); transition: border .2s, background .3s; }
+    .action-item:hover { border-color: var(--primary); }
+    .action-item-text { font-size: 14px; flex: 1; }
+    .action-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* CHECK-IN */
+    .checkin-item { border: 1.5px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 11px; transition: all .2s; background: var(--surface); }
+    .checkin-item.done { border-color: var(--success); background: var(--success-light); }
+    .checkin-item.skipped { border-color: var(--warn); background: var(--warn-light); }
+    .checkin-item-header { display: flex; align-items: flex-start; gap: 11px; }
+    .checkin-item-text { font-size: 14px; flex: 1; line-height: 1.4; }
+    .checkin-buttons { display: flex; gap: 7px; margin-top: 10px; }
+    .checkin-note-area { margin-top: 10px; }
+    .checkin-note-area label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px; }
+
+    /* AI CARD */
+    .ai-card { background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 14px; color: #fff; position: relative; overflow: hidden; }
+    .ai-card::before { content: ''; position: absolute; top: -25px; right: -25px; width: 100px; height: 100px; background: rgba(255,255,255,0.08); border-radius: 50%; }
+    .ai-card-header { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; opacity: .8; margin-bottom: 9px; letter-spacing: .3px; text-transform: uppercase; }
+    .ai-card-text { font-size: 14px; line-height: 1.75; position: relative; z-index: 1; }
+    .ai-loading { display: flex; align-items: center; gap: 7px; font-size: 13px; opacity: .85; }
+    .ai-dot { width: 5px; height: 5px; border-radius: 50%; background: #fff; animation: pulse 1.2s infinite; }
+    .ai-dot:nth-child(2) { animation-delay: .2s; }
+    .ai-dot:nth-child(3) { animation-delay: .4s; }
+
+    /* SESSION RECORD */
+    .session-entry { border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 14px; transition: border .2s; }
+    .session-header { background: var(--surface); padding: 14px 16px; display: flex; align-items: flex-start; justify-content: space-between; cursor: pointer; user-select: none; gap: 10px; }
+    .session-header:hover { background: var(--bg); }
+    .session-date-badge { font-size: 11px; font-weight: 700; color: var(--primary); background: var(--primary-light); padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+    .session-title { font-weight: 600; font-size: 14px; flex: 1; line-height: 1.4; }
+    .session-body { padding: 16px; border-top: 1px solid var(--border); display: none; }
+    .session-body.open { display: block; }
+    .session-notes-preview { font-size: 13px; line-height: 1.7; color: var(--text-muted); background: var(--bg); padding: 12px; border-radius: 8px; margin-bottom: 14px; white-space: pre-wrap; }
+    .summary-block { margin-bottom: 12px; }
+    .summary-block-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px; }
+    .one-liner { font-size: 14px; font-weight: 600; color: var(--primary); line-height: 1.5; padding: 10px 14px; background: var(--primary-light); border-radius: 8px; border-left: 3px solid var(--primary); }
+    .add-action-from-session { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); font-size: 13px; gap: 8px; }
+    .add-action-from-session span { flex: 1; line-height: 1.4; }
+    .added-badge { font-size: 11px; color: var(--success); font-weight: 600; white-space: nowrap; }
+
+    /* PROGRESS */
+    .progress-wrap { background: var(--border); border-radius: 10px; height: 7px; overflow: hidden; margin-top: 7px; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); border-radius: 10px; transition: width .4s ease; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+
+    /* STATS */
+    .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 11px; margin-bottom: 14px; }
+    .stat-box { background: var(--surface); border-radius: var(--radius); padding: 16px 12px; text-align: center; box-shadow: var(--shadow); }
+    .stat-number { font-size: 26px; font-weight: 800; color: var(--primary); line-height: 1; }
+    .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+    .chart-container { position: relative; height: 190px; }
+    .chart-container-tall { position: relative; height: 260px; }
+
+    /* HISTORY */
+    .history-entry { border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+    .history-header { background: var(--primary-light); padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+    .history-header-date { font-weight: 700; color: var(--primary); font-size: 14px; }
+    .history-stats { display: flex; gap: 9px; font-size: 12px; }
+    .history-body { padding: 14px; display: none; }
+    .history-body.open { display: block; }
+    .history-row { display: flex; align-items: flex-start; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .history-row:last-child { border-bottom: none; }
+    .history-row-text { flex: 1; line-height: 1.4; }
+    .history-note { margin-top: 4px; font-size: 11px; color: var(--text-muted); background: var(--bg); padding: 5px 9px; border-radius: 6px; }
+    .history-ai-feedback { margin-top: 10px; padding: 11px 13px; background: var(--primary-light); border-radius: 9px; font-size: 12px; color: var(--primary); line-height: 1.65; border-left: 3px solid var(--primary); }
+    .history-ai-label { font-weight: 700; margin-bottom: 3px; font-size: 11px; }
+
+    /* SETTINGS MODAL */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border-radius: 18px; padding: 26px; width: 100%; max-width: 440px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); animation: fadeIn .2s ease; }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+    .modal-section { margin-bottom: 16px; }
+    .modal-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block; }
+    .modal-hint { font-size: 12px; color: var(--text-muted); margin-top: 5px; line-height: 1.5; }
+    .modal-footer { display: flex; gap: 9px; margin-top: 20px; }
+    .danger-zone { border: 1.5px solid #f0c0c0; border-radius: 10px; padding: 14px; background: #fff8f8; }
+    body.dark .danger-zone { border-color: #5a2020; background: #1e1010; }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 44px 20px; color: var(--text-muted); }
+    .empty-icon { font-size: 44px; margin-bottom: 10px; }
+    .empty-text { font-size: 14px; line-height: 1.65; }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); background: #2d2d2d; color: #fff; padding: 11px 20px; border-radius: 30px; font-size: 13px; font-weight: 500; opacity: 0; transition: all .3s; pointer-events: none; z-index: 999; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* MISC */
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+    .info-box { background: var(--teal-light); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--teal); line-height: 1.6; margin-bottom: 14px; }
+
+    /* ── ONBOARDING ── */
+    #page-onboarding {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 70vh; text-align: center;
+    }
+    .onb-logo { font-size: 52px; margin-bottom: 8px; }
+    .onb-title { font-size: 28px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+    .onb-desc { font-size: 15px; color: var(--text-muted); line-height: 1.6; margin-bottom: 36px; }
+    .onb-question { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+    .onb-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 18px; }
+    .onb-btn { min-width: 140px; padding: 15px 28px; font-size: 15px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; transition: all .2s; font-family: inherit; }
+    .onb-btn-yes { background: var(--primary); color: #fff; }
+    .onb-btn-yes:hover { background: var(--primary-dark); }
+    .onb-btn-no  { background: var(--primary-light); color: var(--primary); }
+    .onb-btn-no:hover { background: #ddd8f5; }
+    .onb-hint { font-size: 12px; color: var(--text-muted); }
+
+    /* ── REPORT / BRIEFING CARDS ── */
+    .report-block { margin-bottom: 14px; }
+    .report-block-label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 9px; display: flex; align-items: center; gap: 5px; }
+    .quote-item { background: var(--bg); border-left: 3px solid var(--primary); padding: 11px 14px; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.65; margin-bottom: 7px; }
+    .quote-item.green { border-left-color: var(--success); }
+
+    /* 어드히어런스 바 */
+    .adh-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .adh-label { font-size: 13px; min-width: 90px; flex-shrink: 0; }
+    .adh-track { flex: 1; height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .adh-fill { height: 100%; background: var(--success); border-radius: 4px; transition: width .5s ease; }
+    .adh-val { font-size: 12px; font-weight: 700; color: var(--text-muted); min-width: 36px; text-align: right; }
+
+    /* 키워드 빈도 */
+    .freq-badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; font-size: 12px; margin: 3px 4px 3px 0; }
+    .freq-badge .cnt { font-weight: 700; color: var(--rose); }
+
+    /* 세션 브리핑 토글 */
+    .briefing-toggle { display: flex; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 16px; }
+    .briefing-toggle-btn { flex: 1; padding: 9px 14px; border: none; border-radius: 8px; background: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--text-muted); transition: all .2s; }
+    .briefing-toggle-btn.active { background: var(--surface); color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+    .quant-section { background: var(--quant-bg); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .quant-section .sec-label { font-size: 10px; font-weight: 700; color: #4a7ab5; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+    body.dark .quant-section .sec-label { color: #7aabdd; }
+
+    .ai-interp-section { background: var(--ai-bg); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .ai-interp-section .sec-label { font-size: 10px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+
+    .disclaimer { font-size: 11px; color: var(--text-muted); background: var(--bg); padding: 10px 13px; border-radius: 8px; line-height: 1.55; margin-top: 14px; }
+
+    /* AI 분석 콘텐츠 마크다운 스타일 */
+    .md-content { font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
+    .md-content strong { font-weight: 700; }
+
+    /* 로딩 */
+    .loading-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 52px 20px; }
+    .spinner { width: 38px; height: 38px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 16px; }
+    .loading-text { font-size: 14px; color: var(--text-muted); }
+
+    /* 모드 선택 */
+    .mode-btns { display: flex; gap: 8px; }
+    .mode-btn { flex: 1; padding: 11px; border: 2px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; text-align: center; font-size: 13px; font-weight: 600; font-family: inherit; color: var(--text-muted); transition: all .2s; }
+    .mode-btn.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+
+    @media (max-width: 500px) {
+      nav { padding: 0 10px; gap: 6px; }
+      .nav-tab { padding: 6px 9px; font-size: 12px; }
+      main { margin: 14px auto; padding: 0 12px; }
+      .card { padding: 16px; }
+      .stat-grid { gap: 7px; }
+      .stat-number { font-size: 22px; }
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulse { 0%,80%,100% { opacity:.3; transform:scale(.8); } 40% { opacity:1; transform:scale(1); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
 </head>
 <body>
 
-  <!-- 메인 앱 영역 -->
-  <div id="app"></div>
+<nav>
+  <div class="nav-logo">🌱 마음 코치</div>
+  <div class="nav-tabs" id="nav-tabs">
+    <!-- JS로 모드에 따라 채워짐 -->
+  </div>
+  <button class="nav-icon-btn" onclick="toggleDark()" id="dark-btn" title="다크 모드">🌙</button>
+  <button class="nav-icon-btn" onclick="openSettings()" title="설정">⚙️</button>
+</nav>
 
-  <!-- 하단 탭바 -->
-  <nav id="tab-bar">
-    <button class="tab-btn" data-tab="record">
-      <span class="tab-icon">&#9997;</span>
-      <span class="tab-label">기록</span>
-    </button>
-    <button class="tab-btn" data-tab="chat">
-      <span class="tab-icon">&#128172;</span>
-      <span class="tab-label">대화</span>
-    </button>
-    <button class="tab-btn" data-tab="report">
-      <span class="tab-icon">&#128202;</span>
-      <span class="tab-label">리포트</span>
-    </button>
-    <button class="tab-btn" data-tab="session">
-      <span class="tab-icon">&#128203;</span>
-      <span class="tab-label">세션 준비</span>
-    </button>
-    <button class="tab-btn" data-tab="timeline">
-      <span class="tab-icon">&#128197;</span>
-      <span class="tab-label">타임라인</span>
-    </button>
-  </nav>
+<main>
 
-  <!-- 설정 모달 -->
-  <div id="settings-overlay" class="modal-overlay hidden" aria-hidden="true"></div>
-  <div id="settings-modal" class="modal hidden" aria-hidden="true">
-    <div class="modal-header">
-      <h2>설정</h2>
-      <button id="settings-close" class="modal-close-btn" aria-label="닫기">&times;</button>
+  <!-- ══════════════ 온보딩 ══════════════ -->
+  <div id="page-onboarding" class="page active">
+    <div class="onb-logo">🌱</div>
+    <div class="onb-title">마음 코치</div>
+    <div class="onb-desc">매일의 감정을 기록하고,<br>나의 사고 습관을 알아차려요.</div>
+    <div class="onb-question">현재 상담을 받고 계세요?</div>
+    <div class="onb-btns">
+      <button class="onb-btn onb-btn-yes" onclick="finishOnboarding('counseling')">네, 받고 있어요</button>
+      <button class="onb-btn onb-btn-no"  onclick="finishOnboarding('general')">아니요</button>
     </div>
-    <div class="modal-body" id="settings-body">
-      <!-- app.js에서 동적으로 채움 -->
+    <div class="onb-hint">나중에 설정에서 언제든 변경할 수 있어요</div>
+  </div>
+
+  <!-- ══════════════ 오늘 기록 ══════════════ -->
+  <div id="page-record" class="page">
+    <div class="page-title">오늘 기록</div>
+    <div class="page-subtitle" id="record-date-subtitle"></div>
+
+    <!-- 자유 텍스트 -->
+    <div class="card">
+      <div class="section-label">오늘 어땠어요?</div>
+      <textarea id="free-text" rows="4" placeholder="오늘 하루를 자유롭게 적어보세요. 어떤 감정이었나요?"></textarea>
+    </div>
+
+    <!-- 과제 체크인 (상담 모드만) -->
+    <div id="checkin-progress-card" class="card" style="display:none">
+      <div class="section-label">오늘의 진행률</div>
+      <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+      <div class="progress-label">
+        <span id="progress-text">0개 완료</span>
+        <span id="progress-pct">0%</span>
+      </div>
+    </div>
+    <div id="ai-feedback-area"></div>
+    <div id="checkin-list"></div>
+
+    <div id="record-save-area" style="margin-top:8px;">
+      <button class="btn btn-primary btn-full" onclick="saveRecord()">오늘 기록 저장하기</button>
     </div>
   </div>
 
-  <!-- 토스트 메시지 -->
-  <div id="toast" class="toast hidden"></div>
+  <!-- ══════════════ 주간 리포트 ══════════════ -->
+  <div id="page-report" class="page">
+    <div class="page-title">주간 리포트</div>
+    <div class="page-subtitle">이번 주 기록을 분석해서 사고 습관을 알려드려요.</div>
+    <div id="report-content"></div>
+  </div>
 
-  <script src="app.js"></script>
+  <!-- ══════════════ 세션 준비 (상담 모드) ══════════════ -->
+  <div id="page-session" class="page">
+    <div class="page-title">세션 준비</div>
+    <div class="page-subtitle">다음 상담 전에 이번 주를 정리해드려요.</div>
+
+    <div class="briefing-toggle" id="briefing-toggle">
+      <button class="briefing-toggle-btn active" id="toggle-client" onclick="switchBriefingView('client')">🌱 내담자 뷰</button>
+      <button class="briefing-toggle-btn" id="toggle-counselor" onclick="switchBriefingView('counselor')">🩺 상담사 뷰</button>
+    </div>
+    <div id="session-briefing-content"></div>
+  </div>
+
+  <!-- ══════════════ 액션 관리 (상담 모드) ══════════════ -->
+  <div id="page-actions" class="page">
+    <div class="page-title">과제 관리</div>
+    <div class="page-subtitle">상담사가 제안한 실천 과제를 등록해두세요.<br>매일 기록 화면에서 체크할 수 있어요.</div>
+    <div class="card">
+      <div class="section-label">새 과제 추가</div>
+      <div class="input-row">
+        <input type="text" id="new-action-input" placeholder="예: 산책 10분, 감정 일기 쓰기..." maxlength="100"
+          onkeydown="if(event.key==='Enter') addAction()" />
+        <button class="btn btn-primary" onclick="addAction()">추가</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label">등록된 과제 <span id="action-count" class="tag">0</span></div>
+      <div class="action-list" id="action-list">
+        <div class="empty" id="action-empty">
+          <div class="empty-icon">📋</div>
+          <div class="empty-text">아직 등록된 과제가 없어요.<br>위에서 첫 번째 실천 과제를 추가해보세요!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 통계 (상담 모드) ══════════════ -->
+  <div id="page-stats" class="page">
+    <div class="page-title">나의 통계</div>
+    <div class="page-subtitle">지금까지의 실천 기록을 한눈에 볼 수 있어요.</div>
+    <div class="stat-grid" id="stat-summary"></div>
+    <div class="card">
+      <div class="section-label">최근 14일 완료율</div>
+      <div class="chart-container"><canvas id="chart-weekly"></canvas></div>
+    </div>
+    <div class="card" id="chart-actions-card">
+      <div class="section-label">과제별 전체 완료율</div>
+      <div class="chart-container-tall"><canvas id="chart-actions"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 히스토리 (상담 모드) ══════════════ -->
+  <div id="page-history" class="page">
+    <div class="page-title">체크인 히스토리</div>
+    <div class="page-subtitle">지금까지의 기록을 볼 수 있어요.<br>날짜를 클릭하면 상세 내용을 확인할 수 있습니다.</div>
+    <div id="history-list"></div>
+  </div>
+
+</main>
+
+<!-- ══════════════ 설정 모달 ══════════════ -->
+<div class="modal-overlay" id="settings-modal" onclick="if(event.target===this) closeSettings()">
+  <div class="modal">
+    <div class="modal-title">⚙️ 설정</div>
+
+    <div class="modal-section">
+      <label class="modal-label">모드</label>
+      <div class="mode-btns" id="mode-btns">
+        <button class="mode-btn" id="mode-btn-general"   onclick="setMode('general')">🌿 일반 모드</button>
+        <button class="mode-btn" id="mode-btn-counseling" onclick="setMode('counseling')">💚 상담 모드</button>
+      </div>
+      <div class="modal-hint">상담 모드는 과제 체크인·세션 준비 기능이 활성화돼요</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="modal-section">
+      <label class="modal-label">Claude API 키</label>
+      <input type="password" id="api-key-input" placeholder="sk-ant-..." />
+      <div class="modal-hint">Anthropic Console에서 발급받은 API 키를 입력하면 AI 분석 기능이 활성화돼요. 키는 브라우저에만 저장됩니다.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="modal-section">
+      <label class="modal-label">테마</label>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="setTheme(false)">☀️ 라이트</button>
+        <button class="btn btn-ghost btn-sm" onclick="setTheme(true)">🌙 다크</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="modal-section">
+      <label class="modal-label">데이터 관리</label>
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" onclick="loadDemoData()">🎬 데모 데이터</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportData()">📥 내보내기</button>
+        <button class="btn btn-ghost btn-sm" onclick="importData()">📤 가져오기</button>
+      </div>
+      <div class="modal-hint" style="margin-top:6px;">데모 데이터: 5일치 샘플 기록과 AI 분석 결과가 채워져요</div>
+      <input type="file" id="import-json" accept=".json" style="display:none" onchange="handleImport(event)" />
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="modal-section danger-zone">
+      <label class="modal-label" style="color:#e05252">위험 구역</label>
+      <button class="btn btn-sm" style="background:#e05252;color:#fff" onclick="clearAllData()">
+        모든 데이터 초기화
+      </button>
+      <div class="modal-hint" style="color:#e05252; margin-top:6px;">이 작업은 되돌릴 수 없습니다.</div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="flex:1" onclick="closeSettings()">저장 & 닫기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// 상수
+// ═══════════════════════════════════════════
+const TRACKED_KEYWORDS  = ['항상','절대','또','어차피','못','안 돼','최악','매번','절대로','맨날'];
+const EMOTION_KEYWORDS  = ['힘들','불안','화가','슬프','기쁘','좋았','감사','우울','짜증','외로','행복','편안','걱정'];
+
+// 탭 정의: [id, 레이블, 모드('all'|'counseling')]
+const TABS = [
+  ['record',    '오늘 기록',  'all'],
+  ['report',    '주간 리포트','all'],
+  ['session',   '세션 준비',  'counseling'],
+  ['actions',   '과제 관리',  'counseling'],
+  ['stats',     '통계',       'counseling'],
+  ['history',   '히스토리',   'counseling'],
+];
+
+// ═══════════════════════════════════════════
+// DATA — 기본 구조 (기존 호환 유지)
+// ═══════════════════════════════════════════
+function getData() {
+  const d = JSON.parse(localStorage.getItem('mentalCoach') || '{}');
+  return { actions: [], checkins: {}, sessions: [], weeklyReports: {}, sessionBriefings: {}, ...d };
+}
+function saveData(d) { localStorage.setItem('mentalCoach', JSON.stringify(d)); }
+
+function getSettings() {
+  return JSON.parse(localStorage.getItem('mcSettings') || '{}');
+}
+function saveSettings(s) { localStorage.setItem('mcSettings', JSON.stringify(s)); }
+
+function getMode() { return getSettings().mode || null; }
+function getApiKey() { return getSettings().apiKey || ''; }
+
+function todayStr() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+function formatDate(str) {
+  const d = new Date(str + 'T00:00:00');
+  const days = ['일','월','화','수','목','금','토'];
+  return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
+function getWeekKey() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const jan4 = new Date(year, 0, 4);
+  const start = new Date(year, 0, 1 + ((1 - jan4.getDay() + 7) % 7));
+  const weekNum = Math.ceil(((d - start) / 86400000 + 1) / 7);
+  return `${year}-W${String(weekNum).padStart(2,'0')}`;
+}
+function getWeekDates() {
+  const dates = [], today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0,10));
+  }
+  return dates;
+}
+function getItems(c) { return Array.isArray(c) ? c : (c.items || []); }
+function getFeedback(c) { return Array.isArray(c) ? null : (c.aiFeedback || null); }
+function getFreeText(c) { return (c && c.freeText) || ''; }
+
+// ═══════════════════════════════════════════
+// 다크 모드
+// ═══════════════════════════════════════════
+function toggleDark() {
+  const d = document.body.classList.toggle('dark');
+  localStorage.setItem('mcDark', d ? '1' : '0');
+  document.getElementById('dark-btn').textContent = d ? '☀️' : '🌙';
+  if (document.getElementById('page-stats').classList.contains('active')) renderStats();
+}
+function setTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  localStorage.setItem('mcDark', dark ? '1' : '0');
+  document.getElementById('dark-btn').textContent = dark ? '☀️' : '🌙';
+}
+function initDark() {
+  if (localStorage.getItem('mcDark') === '1') {
+    document.body.classList.add('dark');
+    document.getElementById('dark-btn').textContent = '☀️';
+  }
+}
+
+// ═══════════════════════════════════════════
+// 온보딩
+// ═══════════════════════════════════════════
+function finishOnboarding(mode) {
+  const s = getSettings();
+  s.mode = mode;
+  s.onboardingDone = true;
+  saveSettings(s);
+  buildNav();
+  showPage('record');
+}
+
+// ═══════════════════════════════════════════
+// 내비게이션
+// ═══════════════════════════════════════════
+function buildNav() {
+  const mode = getMode();
+  const container = document.getElementById('nav-tabs');
+  container.innerHTML = '';
+  TABS.forEach(([id, label, vis]) => {
+    if (vis === 'counseling' && mode !== 'counseling') return;
+    const btn = document.createElement('button');
+    btn.className = 'nav-tab';
+    btn.dataset.page = id;
+    btn.textContent = label;
+    btn.onclick = () => showPage(id, btn);
+    container.appendChild(btn);
+  });
+}
+
+function showPage(name, btn) {
+  const mode = getMode();
+  // 상담 모드 아닌데 상담 전용 탭이면 차단
+  const tab = TABS.find(t => t[0] === name);
+  if (tab && tab[2] === 'counseling' && mode !== 'counseling') { showPage('record'); return; }
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  (btn || document.querySelector(`[data-page="${name}"]`))?.classList.add('active');
+
+  if (name === 'record')  renderRecord();
+  if (name === 'report')  renderReport();
+  if (name === 'session') renderSessionBriefingPage();
+  if (name === 'actions') renderActions();
+  if (name === 'stats')   renderStats();
+  if (name === 'history') renderHistory();
+}
+
+// ═══════════════════════════════════════════
+// 오늘 기록 (자유 텍스트 + 체크인 통합)
+// ═══════════════════════════════════════════
+let checkinState = {};
+
+function renderRecord() {
+  const mode = getMode();
+  const today = todayStr();
+  const data = getData();
+  document.getElementById('record-date-subtitle').textContent = formatDate(today);
+
+  // 자유 텍스트 복원
+  const saved = data.checkins[today];
+  document.getElementById('free-text').value = getFreeText(saved);
+
+  const progressCard = document.getElementById('checkin-progress-card');
+  const saveArea = document.getElementById('record-save-area');
+  const aiArea = document.getElementById('ai-feedback-area');
+  aiArea.innerHTML = '';
+
+  if (mode !== 'counseling' || !data.actions.length) {
+    progressCard.style.display = 'none';
+    document.getElementById('checkin-list').innerHTML = '';
+    return;
+  }
+
+  progressCard.style.display = 'block';
+  if (saved) {
+    checkinState = {};
+    getItems(saved).forEach(i => { checkinState[i.id] = { status: i.status, note: i.note || '' }; });
+    updateProgress(data.actions, getItems(saved));
+    renderCheckinItems(data.actions, true);
+    const fb = getFeedback(saved);
+    if (fb) showAIFeedbackCard(fb);
+  } else {
+    if (!Object.keys(checkinState).length)
+      data.actions.forEach(a => { checkinState[a.id] = { status: 'pending', note: '' }; });
+    updateProgress(data.actions, null);
+    renderCheckinItems(data.actions, false);
+  }
+}
+
+function renderCheckinItems(actions, readOnly) {
+  const list = document.getElementById('checkin-list');
+  list.innerHTML = '';
+  const badge = {
+    done: '<span class="status-badge badge-done">완료 ✓</span>',
+    skip: '<span class="status-badge badge-skip">못함 ✗</span>',
+    pending: '<span class="status-badge badge-pending">미체크</span>'
+  };
+  actions.forEach(action => {
+    const s = checkinState[action.id] || { status: 'pending', note: '' };
+    const el = document.createElement('div');
+    el.className = `checkin-item${s.status==='done'?' done':s.status==='skip'?' skipped':''}`;
+    el.id = 'ci-' + action.id;
+    el.innerHTML = readOnly ? `
+      <div class="checkin-item-header"><div class="checkin-item-text">${esc(action.text)}</div>${badge[s.status]}</div>
+      ${s.note ? `<div class="history-note">💬 ${esc(s.note)}</div>` : ''}` : `
+      <div class="checkin-item-header"><div class="checkin-item-text">${esc(action.text)}</div>${badge[s.status]}</div>
+      <div class="checkin-buttons">
+        <button class="btn btn-sm ${s.status==='done'?'btn-primary':'btn-ghost'}" onclick="setStatus('${action.id}','done')">✓ 완료했어요</button>
+        <button class="btn btn-sm ${s.status==='skip'?'btn-primary':'btn-ghost'}" onclick="setStatus('${action.id}','skip')">✗ 못 했어요</button>
+      </div>
+      ${s.status==='skip'?`<div class="checkin-note-area"><label>어떤 점이 어려웠나요? (선택)</label><textarea placeholder="간단히 메모..." oninput="setNote('${action.id}',this.value)">${esc(s.note)}</textarea></div>`:''}`;
+    list.appendChild(el);
+  });
+}
+
+function setStatus(id, status) {
+  checkinState[id].status = status;
+  if (status === 'done') checkinState[id].note = '';
+  renderCheckinItems(getData().actions, false);
+  updateProgress(getData().actions, null);
+}
+function setNote(id, note) { checkinState[id].note = note; }
+
+function updateProgress(actions, savedItems) {
+  const items = savedItems || Object.entries(checkinState).map(([id,v]) => ({ id,...v }));
+  const done = items.filter(i => i.status==='done').length;
+  const pct = actions.length ? Math.round(done/actions.length*100) : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = `${done}개 완료`;
+  document.getElementById('progress-pct').textContent = pct + '%';
+}
+
+async function saveRecord() {
+  const today = todayStr();
+  const data = getData();
+  const freeText = document.getElementById('free-text').value.trim();
+  const mode = getMode();
+
+  const existing = data.checkins[today] || {};
+  let checkinData;
+
+  if (mode === 'counseling' && data.actions.length) {
+    // 아직 미체크 항목 있으면 확인
+    if (!Object.values(checkinState).every(s => s.status !== 'pending'))
+      if (!confirm('아직 체크하지 않은 항목이 있어요. 저장할까요?')) return;
+
+    const items = data.actions.map(a => ({
+      id: a.id, text: a.text,
+      status: checkinState[a.id]?.status || 'pending',
+      note: checkinState[a.id]?.note || ''
+    }));
+
+    // AI 코치 피드백 (기존 로직 유지, API 없이 동작)
+    showAIFeedbackLoading();
+    const fb = await generateCheckinFeedback(items, data.checkins);
+    checkinData = { freeText, items, aiFeedback: fb };
+    data.checkins[today] = checkinData;
+    saveData(data);
+    checkinState = {};
+    showToast('오늘 기록이 저장되었어요! 🌟');
+    renderCheckinItems(data.actions, true);
+    showAIFeedbackCard(fb);
+  } else {
+    // 일반 모드: 자유 텍스트만 저장
+    data.checkins[today] = { ...existing, freeText };
+    saveData(data);
+    showToast('오늘 기록이 저장되었어요!');
+  }
+}
+
+function showAIFeedbackLoading() {
+  document.getElementById('ai-feedback-area').innerHTML = `<div class="ai-card"><div class="ai-card-header">✨ AI 코치가 분석 중...</div><div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div></div>`;
+}
+function showAIFeedbackCard(text) {
+  document.getElementById('ai-feedback-area').innerHTML = `<div class="ai-card"><div class="ai-card-header">✨ AI 코치의 한마디</div><div class="ai-card-text">${esc(text)}</div></div>`;
+}
+
+async function generateCheckinFeedback(items, checkins) {
+  await new Promise(r => setTimeout(r, 700));
+  const done = items.filter(i => i.status==='done');
+  const skipped = items.filter(i => i.status==='skip');
+  const pct = items.length ? Math.round(done.length/items.length*100) : 0;
+  const streak = calcStreak(checkins);
+  const lines = [];
+  if (pct===100) lines.push(`오늘 ${done.length}개 과제를 모두 완료하셨어요! 계획한 걸 그대로 실천하는 건 정말 쉽지 않은 일이에요.`);
+  else if (pct>=75) lines.push(`오늘 ${done.length}개를 해내셨네요 (${pct}%). 바쁜 일상 속에서도 이만큼 실천한 건 대단해요.`);
+  else if (pct>=50) lines.push(`오늘 절반 이상의 과제를 완료했어요. ${done.length}개의 실천이 쌓여서 변화를 만들어가고 있어요.`);
+  else if (pct>0)   lines.push(`오늘은 쉽지 않은 하루였군요. 그래도 ${done.length}개를 해냈다는 건 포기하지 않았다는 증거예요.`);
+  else lines.push(`오늘은 정말 힘든 하루였군요. 체크인을 기록하러 온 것 자체가 이미 용기 있는 행동이에요.`);
+  if (done.length && pct<100) {
+    const pick = done[Math.floor(Math.random()*done.length)];
+    lines.push(`특히 "${pick.text}"를 실천한 것이 좋았어요.`);
+  }
+  const noted = skipped.filter(i => i.note.trim());
+  if (noted.length) lines.push(`"${noted[0].text}"가 어려웠던 이유를 기록해두셨네요. 이 기록이 다음 상담에서 좋은 재료가 될 거예요.`);
+  else if (skipped.length) lines.push(`완료하지 못한 과제는 내일 다시 도전해봐요. 완벽하지 않아도 괜찮아요.`);
+  if (streak>=7) lines.push(`${streak}일 연속 체크인 중이에요! 이 꾸준함이 가장 큰 힘이 됩니다.`);
+  else if (streak>=3) lines.push(`${streak}일 연속으로 기록 중이에요. 이 습관이 당신을 조금씩 바꾸고 있어요.`);
+  const closings = ['내일도 한 걸음씩, 함께해요. 🌱','작은 실천이 큰 변화를 만들어요. 오늘도 수고했어요.','스스로에게 친절하게 대해주세요. 잘 하고 있어요.','꾸준히 기록하는 것 자체가 치유의 과정이에요.'];
+  lines.push(closings[Math.floor(Math.random()*closings.length)]);
+  return lines.join(' ');
+}
+
+// ═══════════════════════════════════════════
+// 과제 관리 (액션)
+// ═══════════════════════════════════════════
+function addAction(text) {
+  const input = document.getElementById('new-action-input');
+  const t = (text || input?.value || '').trim();
+  if (!t) { showToast('과제 내용을 입력해주세요!'); return false; }
+  const data = getData();
+  if (data.actions.some(a => a.text === t)) { showToast('이미 있는 과제예요.'); return false; }
+  data.actions.push({ id: Date.now().toString(), text: t, createdAt: todayStr() });
+  saveData(data);
+  if (!text && input) input.value = '';
+  renderActions();
+  showToast('과제가 추가되었어요! ✅');
+  return true;
+}
+function deleteAction(id) {
+  if (!confirm('이 과제를 삭제할까요?')) return;
+  const data = getData();
+  data.actions = data.actions.filter(a => a.id !== id);
+  saveData(data);
+  renderActions();
+  showToast('삭제되었습니다.');
+}
+function renderActions() {
+  const data = getData();
+  const list = document.getElementById('action-list');
+  if (!list) return;
+  const empty = document.getElementById('action-empty');
+  document.getElementById('action-count').textContent = data.actions.length;
+  list.querySelectorAll('.action-item').forEach(el => el.remove());
+  if (!data.actions.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  data.actions.forEach(action => {
+    const el = document.createElement('div');
+    el.className = 'action-item';
+    el.innerHTML = `
+      <div>
+        <div class="action-item-text">${esc(action.text)}</div>
+        <div class="action-item-meta">추가일: ${formatDate(action.createdAt)}</div>
+      </div>
+      <button class="btn btn-danger" onclick="deleteAction('${action.id}')">삭제</button>`;
+    list.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════
+// 정량 계산 (LLM 아닌 JS 직접 계산)
+// ═══════════════════════════════════════════
+function calculateQuantitativeData() {
+  const data = getData();
+  const weekDates = getWeekDates();
+  const tasks = data.actions;
+  const taskAdherence = {};
+  let totalDone = 0, totalCount = 0;
+
+  tasks.forEach(task => {
+    let done = 0, recorded = 0;
+    weekDates.forEach(date => {
+      const rec = data.checkins[date];
+      if (rec) {
+        const items = getItems(rec);
+        const t = items.find(it => it.id === task.id);
+        if (t) { recorded++; if (t.status === 'done') done++; }
+      }
+    });
+    taskAdherence[task.text] = { done, recorded, label: `${done}/${recorded}일` };
+    totalDone += done; totalCount += recorded;
+  });
+
+  const overallAdherence = totalCount > 0
+    ? Math.round((totalDone / totalCount) * 100) + '%' : '기록 없음';
+  return { taskAdherence, overallAdherence, totalDone, totalCount };
+}
+
+function calculateExpressionFrequency() {
+  const data = getData();
+  const weekDates = getWeekDates();
+  let allText = '';
+
+  weekDates.forEach(date => {
+    const rec = data.checkins[date];
+    if (!rec) return;
+    if (rec.freeText) allText += ' ' + rec.freeText;
+    getItems(rec).forEach(t => { if (t.note) allText += ' ' + t.note; });
+  });
+
+  const keywordFreq = {};
+  TRACKED_KEYWORDS.forEach(kw => {
+    const m = allText.match(new RegExp(kw, 'g'));
+    if (m && m.length) keywordFreq[kw] = m.length;
+  });
+  const emotionFreq = {};
+  EMOTION_KEYWORDS.forEach(kw => {
+    const m = allText.match(new RegExp(kw, 'g'));
+    if (m && m.length) emotionFreq[kw] = m.length;
+  });
+  return { keywordFreq, emotionFreq };
+}
+
+// ═══════════════════════════════════════════
+// Claude API 호출
+// ═══════════════════════════════════════════
+async function callClaude(systemPrompt, userMessage, maxTokens = 1000) {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('API_KEY_MISSING');
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }]
+    })
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('API_KEY_INVALID');
+    if (res.status === 429) throw new Error('RATE_LIMIT');
+    throw new Error('API_ERROR_' + res.status);
+  }
+  const json = await res.json();
+  return json.content[0].text;
+}
+
+function parseJson(text) {
+  try {
+    const m = text.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+  } catch (e) {}
+  return { rawText: text };
+}
+
+// ═══════════════════════════════════════════
+// 주간 리포트
+// ═══════════════════════════════════════════
+let currentReportWeekKey = null;
+
+function renderReport() {
+  const weekKey = getWeekKey();
+  currentReportWeekKey = weekKey;
+  const data = getData();
+  const existing = data.weeklyReports && data.weeklyReports[weekKey];
+  const el = document.getElementById('report-content');
+
+  if (existing) {
+    el.innerHTML = buildReportHTML(existing);
+    el.innerHTML += `<button class="btn btn-ghost btn-full" style="margin-top:4px" onclick="generateReport()">↺ 다시 생성하기</button>`;
+  } else {
+    el.innerHTML = `
+      <div class="empty"><div class="empty-icon">📊</div><div class="empty-text">이번 주 기록을 분석해서<br>사고 습관을 알려드릴게요</div></div>
+      <button class="btn btn-primary btn-full" style="margin-top:4px" onclick="generateReport()">리포트 생성하기</button>`;
+  }
+}
+
+function buildReportHTML(report) {
+  if (report.rawText) {
+    return `<div class="card"><div class="md-content">${renderMd(report.rawText)}</div></div>`;
+  }
+  let h = '';
+  if (report.summary) {
+    h += `<div class="card"><div class="report-block-label">💬 이번 주 감정 흐름</div><div style="font-size:14px;line-height:1.8;">${esc(report.summary)}</div></div>`;
+  }
+  if (report.frequentExpressions?.length) {
+    const chips = report.frequentExpressions.map(e => `<span class="chip chip-theme">${esc(e)}</span>`).join('');
+    h += `<div class="card"><div class="report-block-label">🔍 자주 쓴 표현</div><div class="chip-list">${chips}</div></div>`;
+  }
+  if (report.patterns?.length) {
+    const items = report.patterns.map(p => {
+      const ex = p.examples?.map(e => `"${esc(e)}"`).join(', ') || '';
+      return `<div class="quote-item">${esc(p.pattern)}${ex ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">예시: ${ex}</div>` : ''}</div>`;
+    }).join('');
+    h += `<div class="card"><div class="report-block-label">🧠 사고 습관 패턴</div>${items}</div>`;
+  }
+  if (report.reframing?.length) {
+    const items = report.reframing.map(r => `<div class="quote-item green">${esc(r)}</div>`).join('');
+    h += `<div class="card"><div class="report-block-label">💡 다르게 생각해볼까요?</div>${items}</div>`;
+  }
+  if (report.emotionKeywords && Object.keys(report.emotionKeywords).length) {
+    const chips = Object.entries(report.emotionKeywords).sort((a,b)=>b[1]-a[1])
+      .map(([k,v]) => `<span class="chip chip-emotion">${esc(k)} ${v}회</span>`).join('');
+    h += `<div class="card"><div class="report-block-label">🌡️ 감정 키워드</div><div class="chip-list">${chips}</div></div>`;
+  }
+  // 상담 모드: 과제 이행률
+  if (getMode() === 'counseling') {
+    const quant = calculateQuantitativeData();
+    if (Object.keys(quant.taskAdherence).length) {
+      const bars = Object.entries(quant.taskAdherence).map(([name, d]) => {
+        const pct = d.recorded > 0 ? Math.round(d.done / d.recorded * 100) : 0;
+        return `<div class="adh-row"><span class="adh-label">${esc(name)}</span><div class="adh-track"><div class="adh-fill" style="width:${pct}%"></div></div><span class="adh-val">${d.label}</span></div>`;
+      }).join('');
+      h += `<div class="card"><div class="report-block-label">✅ 과제 이행률 (전체 ${quant.overallAdherence})</div>${bars}</div>`;
+    }
+    if (report.taskInsight) {
+      h += `<div class="card"><div class="report-block-label">🔗 과제 이행 분석</div><div style="font-size:14px;line-height:1.8;">${esc(report.taskInsight)}</div></div>`;
+    }
+  }
+  return h;
+}
+
+async function generateReport() {
+  const el = document.getElementById('report-content');
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    showToast('설정에서 API 키를 입력해주세요');
+    openSettings();
+    return;
+  }
+
+  const data = getData();
+  const weekDates = getWeekDates();
+  const hasData = weekDates.some(d => {
+    const rec = data.checkins[d];
+    return rec && (rec.freeText || getItems(rec).length > 0);
+  });
+  if (!hasData) {
+    showToast('이번 주 기록이 아직 없어요. 먼저 기록을 남겨보세요!');
+    return;
+  }
+
+  el.innerHTML = `<div class="card"><div class="loading-box"><div class="spinner"></div><div class="loading-text">AI가 이번 주를 돌아보고 있어요...</div></div></div>`;
+
+  try {
+    const weekData = {};
+    weekDates.forEach(d => { weekData[d] = data.checkins[d] || null; });
+    const quant = getMode() === 'counseling' ? calculateQuantitativeData() : null;
+
+    let userMsg = `아래는 사용자의 최근 1주일 기록입니다:\n\n${JSON.stringify(weekData, null, 2)}`;
+    if (quant) userMsg += `\n\n과제 이행 데이터:\n${JSON.stringify(quant, null, 2)}`;
+    userMsg += `\n\n이 기록을 분석하여 다음을 JSON 형태로 제공하세요:\n{"summary":"주간 감정 흐름 요약(3~4문장,따뜻한 톤)","frequentExpressions":["자주 쓴 표현"],"patterns":[{"pattern":"사고 습관(일상 언어)","examples":["실제 표현 예시"]}],"reframing":["리프레이밍 제안"],"emotionKeywords":{"감정":빈도수}${quant ? ',"taskInsight":"과제 이행과 감정 교차 분석"' : ''}}\nJSON만 출력하세요.`;
+
+    const sysPrompt = '당신은 사용자의 감정 기록을 분석하는 따뜻한 코치입니다. 1주일간 기록에서 반복되는 사고 습관을 감지하고 일상적인 언어로 부드럽게 알려주세요. 절대로 "인지 왜곡","파국화","흑백사고" 같은 임상 전문 용어를 사용하지 마세요. 이것은 진단이 아니라 자기 인식을 돕는 것입니다.';
+
+    const result = await callClaude(sysPrompt, userMsg, 1500);
+    const parsed = parseJson(result);
+    const weekKey = getWeekKey();
+    data.weeklyReports = data.weeklyReports || {};
+    data.weeklyReports[weekKey] = { ...parsed, generatedAt: new Date().toISOString() };
+    saveData(data);
+    renderReport();
+  } catch (err) {
+    handleApiError(err);
+    renderReport();
+  }
+}
+
+// ═══════════════════════════════════════════
+// 세션 준비 브리핑
+// ═══════════════════════════════════════════
+let briefingView = 'client';
+
+function switchBriefingView(view) {
+  briefingView = view;
+  document.getElementById('toggle-client').classList.toggle('active', view === 'client');
+  document.getElementById('toggle-counselor').classList.toggle('active', view === 'counselor');
+  renderSessionBriefingPage();
+}
+
+function renderSessionBriefingPage() {
+  const data = getData();
+  const keys = Object.keys(data.sessionBriefings || {}).sort().reverse();
+  const latest = keys[0] ? data.sessionBriefings[keys[0]] : null;
+  const el = document.getElementById('session-briefing-content');
+
+  if (latest) {
+    el.innerHTML = buildBriefingHTML(latest) +
+      `<button class="btn btn-ghost btn-full" style="margin-top:4px" onclick="generateBriefing()">↺ 다시 생성하기</button>`;
+  } else {
+    el.innerHTML = `
+      <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">다음 세션 전에<br>이번 주를 정리해드릴게요</div></div>
+      <button class="btn btn-primary btn-full" style="margin-top:4px" onclick="generateBriefing()">브리핑 생성하기</button>`;
+  }
+}
+
+function buildBriefingHTML(briefing) {
+  if (briefingView === 'client') {
+    return `<div class="card"><div class="md-content">${renderMd(briefing.clientView || '')}</div></div>`;
+  }
+
+  // 상담사 뷰: 정량 + AI 해석 분리
+  let html = '';
+  const qd = briefing.quantitativeData;
+  if (qd) {
+    let adh = '', freq = '';
+    if (qd.taskAdherence && Object.keys(qd.taskAdherence).length) {
+      const bars = Object.entries(qd.taskAdherence).map(([name, d]) => {
+        const pct = d.recorded > 0 ? Math.round(d.done / d.recorded * 100) : 0;
+        return `<div class="adh-row"><span class="adh-label">${esc(name)}</span><div class="adh-track"><div class="adh-fill" style="width:${pct}%"></div></div><span class="adh-val">${d.label}</span></div>`;
+      }).join('');
+      adh = `<div style="margin-bottom:10px"><strong style="font-size:13px;">과제 이행률 (전체 ${qd.overallAdherence})</strong><div style="margin-top:8px">${bars}</div></div>`;
+    }
+    if (qd.expressionFrequency?.keywordFreq && Object.keys(qd.expressionFrequency.keywordFreq).length) {
+      const badges = Object.entries(qd.expressionFrequency.keywordFreq).sort((a,b)=>b[1]-a[1])
+        .map(([kw,cnt]) => `<span class="freq-badge">${esc(kw)} <span class="cnt">${cnt}회</span></span>`).join('');
+      freq = `<div><strong style="font-size:13px;">추적 키워드 빈도</strong><div style="margin-top:8px">${badges}</div></div>`;
+    }
+    if (adh || freq) {
+      html += `<div class="quant-section"><div class="sec-label">📊 정량 데이터 (코드 계산)</div>${adh}${freq}</div>`;
+    }
+  }
+
+  html += `<div class="ai-interp-section"><div class="sec-label">🧠 AI 해석</div><div class="md-content">${renderMd(briefing.counselorView || '')}</div></div>`;
+  html += `<div class="disclaimer">⚠️ 본 브리핑은 AI가 생성한 참고자료이며, 임상적 판단을 대체하지 않습니다. 최종 판단은 상담사에게 있습니다.</div>`;
+
+  return html;
+}
+
+async function generateBriefing() {
+  const apiKey = getApiKey();
+  if (!apiKey) { showToast('설정에서 API 키를 입력해주세요'); openSettings(); return; }
+
+  const data = getData();
+  const weekDates = getWeekDates();
+  const hasData = weekDates.some(d => {
+    const rec = data.checkins[d];
+    return rec && (rec.freeText || getItems(rec).length > 0);
+  });
+  if (!hasData) { showToast('이번 주 기록이 없어요. 먼저 기록을 남겨보세요!'); return; }
+
+  const el = document.getElementById('session-briefing-content');
+  el.innerHTML = `<div class="card"><div class="loading-box"><div class="spinner"></div><div class="loading-text">브리핑을 준비하고 있어요...</div></div></div>`;
+
+  try {
+    const weekData = {};
+    weekDates.forEach(d => { weekData[d] = data.checkins[d] || null; });
+    const quant = calculateQuantitativeData();
+    const freq = calculateExpressionFrequency();
+    const dataStr = JSON.stringify(weekData, null, 2);
+    const quantStr = JSON.stringify(quant, null, 2);
+
+    const clientSys = '당신은 따뜻하고 공감적인 심리 코치입니다. 내담자가 다음 상담 세션을 주도적으로 준비할 수 있도록 도와주세요. 절대로 진단하거나 판단하지 마세요. 임상 전문 용어를 사용하지 마세요. 격려와 부드러운 제안 톤을 유지하세요.';
+    const clientMsg = `아래는 내담자의 최근 1주일 기록입니다:\n\n${dataStr}\n\n과제 이행 데이터:\n${quantStr}\n\n다음을 포함한 세션 준비 브리핑을 마크다운으로 작성하세요:\n1. 이번 주 감정 흐름 요약 (따뜻한 톤, 전문 용어 없이)\n2. 다음 세션에서 꺼내볼 만한 주제 제안 2~3개\n3. 과제 이행 요약 (격려 톤)\n4. 반복 패턴 관련 부드러운 관찰`;
+
+    const counselorSys = '당신은 임상 심리 어시스턴트입니다. 상담사가 세션을 효율적으로 준비할 수 있도록 객관적이고 건조한 임상 톤으로 보고하세요. CBT 전문 용어(인지 왜곡, 파국화, 흑백사고, 과일반화 등)를 적극 사용하세요. 정량적 수치는 별도로 제공되므로 패턴 해석과 세션 어젠다 제안에 집중하세요.';
+    const counselorMsg = `아래는 내담자의 최근 1주일 기록입니다:\n\n${dataStr}\n\n과제 이행 데이터:\n${quantStr}\n\n다음을 포함한 임상 브리핑을 마크다운으로 작성하세요:\n1. 감정 패턴 해석 (인지 왜곡 유형 명시)\n2. 미완료 과제의 맥락 분석 (회피, 동기 저하 등)\n3. 세션 어젠다 제안 (긴급/중간/낮음 분류)\n4. 주의 필요 사항`;
+
+    const [clientView, counselorView] = await Promise.all([
+      callClaude(clientSys, clientMsg, 1000),
+      callClaude(counselorSys, counselorMsg, 1000)
+    ]);
+
+    const today = todayStr();
+    data.sessionBriefings = data.sessionBriefings || {};
+    data.sessionBriefings[today] = {
+      clientView, counselorView,
+      quantitativeData: { ...quant, expressionFrequency: freq },
+      generatedAt: new Date().toISOString()
+    };
+    saveData(data);
+    renderSessionBriefingPage();
+  } catch (err) {
+    handleApiError(err);
+    renderSessionBriefingPage();
+  }
+}
+
+function handleApiError(err) {
+  if (err.message === 'API_KEY_MISSING')  showToast('설정에서 API 키를 입력해주세요');
+  else if (err.message === 'API_KEY_INVALID') showToast('API 키가 올바르지 않아요');
+  else if (err.message === 'RATE_LIMIT')  showToast('잠시 후 다시 시도해주세요 (요청 한도 초과)');
+  else { showToast('오류가 발생했어요. 다시 시도해주세요.'); console.error(err); }
+}
+
+// ═══════════════════════════════════════════
+// 통계
+// ═══════════════════════════════════════════
+let chartWeekly = null, chartActions = null;
+
+function calcStreak(checkins) {
+  let streak = 0;
+  const cursor = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = cursor.toISOString().slice(0,10);
+    if (checkins[d]) streak++;
+    else if (i === 0) { /* today not checked yet */ }
+    else break;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return streak;
+}
+
+function getChartTheme() {
+  const dk = document.body.classList.contains('dark');
+  return {
+    text: dk ? '#e8e6f0' : '#2d2d2d', muted: dk ? '#7a7a9a' : '#999',
+    grid: dk ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    primary: dk ? '#9d8ff0' : '#7c6fcd', success: dk ? '#4aad78' : '#52b788', warn: dk ? '#f0a060' : '#f4a261',
+  };
+}
+
+function renderStats() {
+  const data = getData();
+  const checkins = data.checkins;
+  const dates = Object.keys(checkins).sort();
+  const totalDays = dates.length;
+  const streak = calcStreak(checkins);
+  let totalDone = 0, totalItems = 0;
+  dates.forEach(d => {
+    const items = getItems(checkins[d]);
+    totalDone += items.filter(i => i.status==='done').length;
+    totalItems += items.length;
+  });
+  const avgRate = totalItems ? Math.round(totalDone/totalItems*100) : 0;
+
+  document.getElementById('stat-summary').innerHTML = `
+    <div class="stat-box"><div class="stat-number">${totalDays}</div><div class="stat-label">총 기록일</div></div>
+    <div class="stat-box"><div class="stat-number">${avgRate}%</div><div class="stat-label">평균 완료율</div></div>
+    <div class="stat-box"><div style="font-size:26px">${streak>0?'🔥':'-'}</div><div class="stat-label">연속 ${streak}일</div></div>`;
+
+  const th = getChartTheme();
+  const last14 = [], labels14 = [];
+  const now = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now); d.setDate(now.getDate()-i);
+    const str = d.toISOString().slice(0,10);
+    labels14.push(`${d.getMonth()+1}/${d.getDate()}`);
+    const entry = checkins[str];
+    if (entry) { const it = getItems(entry); last14.push(it.length ? Math.round(it.filter(x=>x.status==='done').length/it.length*100) : 0); }
+    else last14.push(null);
+  }
+  if (chartWeekly) chartWeekly.destroy();
+  chartWeekly = new Chart(document.getElementById('chart-weekly').getContext('2d'), {
+    type: 'bar',
+    data: { labels: labels14, datasets: [{ label:'완료율(%)', data: last14, backgroundColor: last14.map(v => v===null?'transparent':v>=80?th.success+'cc':v>=50?th.primary+'cc':th.warn+'cc'), borderColor: last14.map(v=>v===null?'transparent':v>=80?th.success:v>=50?th.primary:th.warn), borderWidth:1.5, borderRadius:5 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: { x:{ticks:{color:th.muted,font:{size:10}},grid:{color:th.grid}}, y:{min:0,max:100,ticks:{color:th.muted,font:{size:10},callback:v=>v+'%'},grid:{color:th.grid}} } }
+  });
+
+  const actionStats = {};
+  data.actions.forEach(a => { actionStats[a.id] = { text: a.text, done:0, total:0 }; });
+  dates.forEach(d => { getItems(checkins[d]).forEach(item => { if (actionStats[item.id]) { actionStats[item.id].total++; if (item.status==='done') actionStats[item.id].done++; } }); });
+  const arr = Object.values(actionStats).filter(a => a.total>0);
+  if (chartActions) chartActions.destroy();
+  if (!arr.length) { document.getElementById('chart-actions-card').style.display='none'; return; }
+  document.getElementById('chart-actions-card').style.display='block';
+  const rates = arr.map(a => Math.round(a.done/a.total*100));
+  chartActions = new Chart(document.getElementById('chart-actions').getContext('2d'), {
+    type: 'bar',
+    data: { labels: arr.map(a=>a.text.length>18?a.text.slice(0,18)+'…':a.text), datasets: [{ label:'완료율(%)', data:rates, backgroundColor:rates.map(r=>r>=80?th.success+'cc':r>=50?th.primary+'cc':th.warn+'cc'), borderColor:rates.map(r=>r>=80?th.success:r>=50?th.primary:th.warn), borderWidth:1.5, borderRadius:5 }] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales: { x:{min:0,max:100,ticks:{color:th.muted,font:{size:10},callback:v=>v+'%'},grid:{color:th.grid}}, y:{ticks:{color:th.text,font:{size:11}},grid:{color:'transparent'}} } }
+  });
+}
+
+// ═══════════════════════════════════════════
+// 히스토리
+// ═══════════════════════════════════════════
+function renderHistory() {
+  const data = getData();
+  const list = document.getElementById('history-list');
+  list.innerHTML = '';
+  const dates = Object.keys(data.checkins).sort((a,b)=>b.localeCompare(a));
+  if (!dates.length) {
+    list.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">📖</div><div class="empty-text">아직 저장된 기록이 없어요.<br>'오늘 기록' 탭에서 첫 기록을 남겨보세요!</div></div></div>`;
+    return;
+  }
+  dates.forEach((date, idx) => {
+    const checkin = data.checkins[date];
+    const items = getItems(checkin);
+    const fb = getFeedback(checkin);
+    const ft = getFreeText(checkin);
+    const done = items.filter(i=>i.status==='done').length;
+    const skip = items.filter(i=>i.status==='skip').length;
+    const bodyId = 'hb-' + date;
+    const el = document.createElement('div');
+    el.className = 'history-entry';
+    el.innerHTML = `
+      <div class="history-header" onclick="toggleEl('${bodyId}')">
+        <div class="history-header-date">${formatDate(date)}</div>
+        <div class="history-stats">
+          ${items.length ? `<span style="color:var(--success)">✓ ${done}</span><span style="color:var(--warn)">✗ ${skip}</span>` : ''}
+          ${ft ? `<span style="color:var(--text-muted)">📝</span>` : ''}
+        </div>
+      </div>
+      <div class="history-body ${idx===0?'open':''}" id="${bodyId}">
+        ${ft ? `<div class="session-notes-preview" style="margin-bottom:${items.length?'12px':'0'}">${esc(ft)}</div>` : ''}
+        ${items.map(item=>`
+          <div class="history-row">
+            <span>${item.status==='done'?'✅':item.status==='skip'?'⚠️':'⬜'}</span>
+            <div class="history-row-text">
+              <div>${esc(item.text)}</div>
+              ${item.note?`<div class="history-note">💬 ${esc(item.note)}</div>`:''}
+            </div>
+          </div>`).join('')}
+        ${fb?`<div class="history-ai-feedback"><div class="history-ai-label">✨ AI 코치</div>${esc(fb)}</div>`:''}
+      </div>`;
+    list.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════
+// 설정 모달
+// ═══════════════════════════════════════════
+function openSettings() {
+  const s = getSettings();
+  const apiInput = document.getElementById('api-key-input');
+  if (apiInput) apiInput.value = s.apiKey || '';
+  const mode = s.mode || 'general';
+  document.getElementById('mode-btn-general').classList.toggle('active', mode === 'general');
+  document.getElementById('mode-btn-counseling').classList.toggle('active', mode === 'counseling');
+  document.getElementById('settings-modal').classList.add('open');
+}
+
+function closeSettings() {
+  // API 키 저장
+  const apiInput = document.getElementById('api-key-input');
+  if (apiInput) {
+    const s = getSettings();
+    s.apiKey = apiInput.value.trim();
+    saveSettings(s);
+  }
+  document.getElementById('settings-modal').classList.remove('open');
+  // 현재 탭 다시 렌더
+  const activePage = document.querySelector('.page.active');
+  if (activePage) {
+    const name = activePage.id.replace('page-', '');
+    if (name !== 'onboarding') showPage(name);
+  }
+}
+
+function setMode(mode) {
+  const s = getSettings();
+  s.mode = mode;
+  saveSettings(s);
+  document.getElementById('mode-btn-general').classList.toggle('active', mode === 'general');
+  document.getElementById('mode-btn-counseling').classList.toggle('active', mode === 'counseling');
+  buildNav();
+}
+
+function exportData() {
+  const data = getData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `마음코치_백업_${todayStr()}.json`; a.click(); URL.revokeObjectURL(url);
+  showToast('데이터가 내보내졌어요!');
+}
+function importData() { document.getElementById('import-json').click(); }
+function handleImport(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (!confirm('현재 데이터를 가져온 데이터로 교체할까요?')) return;
+      localStorage.setItem('mentalCoach', JSON.stringify(d));
+      showToast('데이터를 가져왔어요!'); location.reload();
+    } catch { showToast('올바른 파일이 아니에요.'); }
+  };
+  reader.readAsText(file); e.target.value = '';
+}
+function clearAllData() {
+  if (!confirm('정말로 모든 데이터를 삭제할까요?')) return;
+  if (!confirm('마지막 확인: 모든 기록이 영구 삭제됩니다.')) return;
+  localStorage.removeItem('mentalCoach');
+  showToast('데이터가 초기화되었어요.'); closeSettings(); location.reload();
+}
+
+// ═══════════════════════════════════════════
+// 데모 데이터
+// ═══════════════════════════════════════════
+function getDemoDates() {
+  const dates = [], today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    if (d.getDay() >= 1 && d.getDay() <= 5) dates.push(d.toISOString().slice(0,10));
+  }
+  return dates.slice(0,5);
+}
+
+const DEMO_FREE_TEXTS = [
+  '오늘 팀 회의에서 또 실수를 했다. 내가 준비한 자료에 오류가 있었는데, 팀장님이 바로 지적하셨다. 정말 쥐구멍에 들어가고 싶었다. 어차피 나는 이런 중요한 자리에서 항상 이런 식이다. 오늘도 망쳤다는 생각밖에 안 든다.',
+  '어젯밤에 잠을 잘 못 잤다. 자꾸 내일 발표가 걱정됐다. 불안한 게 가라앉질 않아서 새벽 3시까지 뒤척였다. 발표를 망치면 프로젝트 전체가 날아갈 것 같은 느낌이다. 최악의 경우를 자꾸 생각하게 된다.',
+  '오늘 발표는 그냥저냥 넘어갔다. 잘한 건 아닌데 망하지는 않았다. 근데 집에 오면서 또 생각이 많아졌다. 내가 항상 이렇게 준비가 부족한 것 같다. 매번 이런 식으로 겨우겨우 버티는 게 맞나 싶다.',
+  '오늘은 좀 쉬었다. 오랜만에 친구를 만났는데 기분이 조금 나아졌다. 그래도 집에 오니까 또 불안해졌다. 나만 뒤처지는 것 같은 느낌. 친구들은 다들 잘 나가는데 나는 항상 제자리인 것 같아서 슬프다.',
+  '주말인데 쉬지를 못했다. 월요일에 있을 보고서 때문에 계속 신경이 쓰인다. 어차피 내가 해봤자 결과가 좋을 리 없다는 생각이 든다. 왜 나는 항상 이렇게 걱정이 많을까. 좀 편안하게 살고 싶다.'
+];
+const DEMO_ACTIONS = [
+  { id: 'demo_a1', text: '산책 10분', createdAt: '' },
+  { id: 'demo_a2', text: '감정 일기 쓰기', createdAt: '' }
+];
+const DEMO_CHECKINS = [
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'퇴근하고 너무 피곤해서 못 했다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'비가 와서 나가기 싫었다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'done', note:'' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'그냥 하기 싫었다. 어차피 해도 달라지는 게 없는 것 같아서' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'보고서 준비하느라 시간이 없었다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'skip', note:'쓰려고 했는데 너무 지쳐서 그냥 잤다' }]
+];
+
+function loadDemoData() {
+  if (!confirm('데모 데이터를 불러오면 기존 기록이 모두 지워집니다. 계속할까요?')) return;
+  closeSettings();
+
+  const now = new Date().toISOString();
+  const dates = getDemoDates();
+  const s = getSettings();
+  s.mode = 'counseling'; s.onboardingDone = true;
+  saveSettings(s);
+
+  const data = getData();
+  data.actions = DEMO_ACTIONS.map(a => ({ ...a, createdAt: todayStr() }));
+
+  dates.forEach((date, i) => {
+    data.checkins[date] = {
+      freeText: DEMO_FREE_TEXTS[i],
+      items: DEMO_CHECKINS[i],
+      aiFeedback: i === 2 ? '오늘 산책도 하시고 정말 수고하셨어요! 발표가 무사히 넘어간 것도 작은 성취예요. 내일도 한 걸음씩 함께해요. 🌱' : null
+    };
+  });
+
+  data.weeklyReports = data.weeklyReports || {};
+  data.weeklyReports[getWeekKey()] = {
+    summary: '이번 주는 꽤 버거운 한 주였네요. 회의 실수, 발표 준비, 주말 보고서까지 쉴 틈이 없었어요. 그 와중에 친구를 만난 수요일엔 잠깐 숨통이 트이는 것 같았고요. 작은 순간들이 있었지만, 전반적으로 "어차피"와 "항상"이 많이 나왔던 한 주였어요.',
+    frequentExpressions: ['항상', '어차피', '또', '매번', '못'],
+    patterns: [
+      { pattern: '안 좋은 일이 생겼을 때 "최악의 결과"를 먼저 떠올리는 패턴이 이번 주 3번 있었어요.', examples: ['발표를 망치면 프로젝트 전체가 날아갈 것 같은 느낌이다', '어차피 내가 해봤자 결과가 좋을 리 없다'] },
+      { pattern: '"항상", "매번" 같은 전부-아니면-전무 표현이 자주 보여요. 한 번 있었던 일을 "나는 항상 이래"로 넓혀서 생각하는 경향이 있었어요.', examples: ['항상 이런 식이다', '매번 이런 식으로 겨우겨우 버티는 게 맞나'] }
+    ],
+    reframing: ['이번 주 발표가 "망하지 않았다"고 하셨잖아요. 정말 항상 이런 결과인지, 한 번 돌아보면 어떨까요?', '"어차피 해봤자"라고 느껴질 때, 그 생각이 나를 돕고 있는 건지 한번 물어봐도 좋을 것 같아요.'],
+    emotionKeywords: { '불안': 3, '힘들': 2, '슬프': 1, '걱정': 2 },
+    taskInsight: '과제를 못 한 날에 "어차피 해봤자", "너무 지쳐서" 같은 표현이 집중되어 있어요. 못 한 것 자체보다 그때의 감정이 다음 세션에서 이야기 나눠볼 주제가 될 수 있어요.',
+    generatedAt: now
+  };
+
+  data.sessionBriefings = data.sessionBriefings || {};
+  data.sessionBriefings[todayStr()] = {
+    clientView: `# 이번 주 세션 준비 브리핑 🌱\n\n## 이번 주 어떠셨나요?\n\n회의 실수, 발표 준비, 주말 보고서까지 정말 쉴 틈이 없는 한 주였네요. 그 사이에 친구를 만나면서 잠깐 숨통이 트이기도 했고요. 많이 수고하셨어요.\n\n## 다음 세션에서 꺼내보면 어떨까요?\n\n1. **"어차피 해봤자"라는 생각** — 산책을 미루면서 "해도 달라지는 게 없는 것 같다"고 하셨는데, 이 느낌이 어디서 오는지 이야기해보면 좋을 것 같아요.\n\n2. **발표 전날 밤** — 잠을 못 주무셨던 그 밤의 불안이 어떤 건지, 좀 더 들여다볼 기회가 될 것 같아요.\n\n3. **"나만 뒤처지는 것 같다"는 감각** — 친구들과 비교하면서 슬프셨던 부분도요.\n\n## 과제는 어떠셨나요?\n\n감정 일기는 4일을 잘 쓰셨어요. 산책은 이번 주 1번 하셨는데, 못 하신 날들에 다 나름의 이유가 있었네요. 잘 못했다고 생각하기보다는, 왜 어려웠는지를 가져가시는 게 더 도움이 될 것 같아요.`,
+    counselorView: `# 임상 브리핑 — 주간 요약\n\n## 감정 패턴 해석\n\n- **파국화(Catastrophizing)** 3회 확인: "발표를 망치면 프로젝트 전체가 날아갈 것" 등 부정적 결과를 과대평가하는 패턴 반복\n- **과일반화(Overgeneralization)**: "항상 이런 식", "매번 겨우겨우" — 단발 사건을 전체 자기 서사로 확장\n- 수요일 이후 자기비하 표현 증가: 친구 만남 후 비교로 인한 열등감 촉발 가능성\n\n## 미완료 과제 맥락 분석\n\n- **산책 10분 (1/5일)**: 회피 패턴 의심. "어차피 해봤자 달라지는 게 없다"는 무망감(Hopelessness) 요소 포함\n- **감정 일기 (4/5일)**: 금요일 미완료는 소진(Burnout) 신호로 해석 가능\n\n## 세션 어젠다 제안\n\n| 우선순위 | 주제 |\n|---------|------|\n| 긴급 | 무망감 탐색: "어차피 해봤자" 핵심 신념 확인 |\n| 중간 | 수면 문제 및 발표 전 불안 패턴 |\n| 낮음 | 사회적 비교로 인한 열등감 |\n\n## 주의 사항\n\n특이 사항 없음. 자해/자살 관련 표현 없음.`,
+    quantitativeData: {
+      taskAdherence: {
+        '산책 10분': { done: 1, recorded: 5, label: '1/5일' },
+        '감정 일기 쓰기': { done: 4, recorded: 5, label: '4/5일' }
+      },
+      overallAdherence: '50%',
+      totalDone: 5, totalCount: 10,
+      expressionFrequency: {
+        keywordFreq: { '항상': 5, '어차피': 4, '또': 3, '매번': 2, '못': 3 },
+        emotionFreq: { '불안': 3, '힘들': 2, '걱정': 2, '슬프': 1 }
+      }
+    },
+    generatedAt: now
+  };
+
+  saveData(data);
+  buildNav();
+  showToast('데모 데이터를 불러왔어요! 🎬');
+  showPage('record');
+}
+
+// ═══════════════════════════════════════════
+// 유틸
+// ═══════════════════════════════════════════
+function toggleEl(id) { document.getElementById(id).classList.toggle('open'); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function renderMd(text) {
+  if (!text) return '';
+  return esc(text)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^#### (.+)$/gm, '<h5 style="margin:10px 0 5px;font-size:13px">$1</h5>')
+    .replace(/^### (.+)$/gm, '<h4 style="margin:12px 0 6px;font-size:14px">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="margin:14px 0 7px;font-size:15px;color:var(--primary)">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2 style="margin:16px 0 8px;font-size:17px;color:var(--primary)">$1</h2>')
+    .replace(/^\| (.+) \|$/gm, '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">$1</div>')
+    .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 16px">• $1</div>')
+    .replace(/^\d+\. (.+)$/gm, '<div style="padding:2px 0 2px 16px">$&</div>')
+    .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+}
+
+// ═══════════════════════════════════════════
+// 초기화
+// ═══════════════════════════════════════════
+initDark();
+
+const initSettings = getSettings();
+if (initSettings.onboardingDone) {
+  buildNav();
+  document.getElementById('page-onboarding').classList.remove('active');
+  showPage('record');
+} else {
+  // 온보딩 표시
+  document.getElementById('page-onboarding').classList.add('active');
+  document.getElementById('nav-tabs').innerHTML = '';
+}
+</script>
 </body>
 </html>
