@@ -369,18 +369,24 @@
 
     <!-- 모드 선택 (대화 시작 전) -->
     <div id="chat-mode-select">
-      <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-        <div class="chat-mode-card active" onclick="startChat('empathy')">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="chat-mode-card" id="mode-card-empathy" onclick="selectChatMode('empathy')">
           <div class="chat-mode-icon">💜</div>
           <div class="chat-mode-title">공감 모드</div>
-          <div class="chat-mode-desc">따뜻하게 들어주고 감정을 반영해요.<br>해결책 대신 경청에 집중합니다.</div>
+          <div class="chat-mode-desc">감정을 들어주고<br>경청에 집중해요.</div>
+        </div>
+        <div class="chat-mode-card" id="mode-card-solution" onclick="selectChatMode('solution')">
+          <div class="chat-mode-icon">💡</div>
+          <div class="chat-mode-title">해결책 모드</div>
+          <div class="chat-mode-desc">상황을 분석하고<br>실질적인 방법을 제안해요.</div>
         </div>
       </div>
-      <button class="btn btn-primary btn-full" style="margin-top: 16px;" onclick="startChat('empathy')">대화 시작하기</button>
+      <button class="btn btn-primary btn-full" style="margin-top: 16px;" onclick="startSelectedChat()">대화 시작하기</button>
     </div>
 
     <!-- 채팅 UI (대화 중) -->
     <div id="chat-area" class="chat-container" style="display: none;">
+      <div id="chat-mode-badge" style="text-align:center; padding: 8px 0 4px; font-size: 13px; color: var(--text-secondary);"></div>
       <div class="chat-messages" id="chat-messages"></div>
       <div class="chat-input-area">
         <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요..."
@@ -968,6 +974,27 @@ const EMPATHY_SYSTEM = `당신은 따뜻하고 공감적인 대화 상대입니�
 짧고 자연스러운 대화체로 응답하세요. 3~4문장 이내.
 한국어로만 응답하세요.`;
 
+const SOLUTION_SYSTEM = `당신은 실용적인 문제 해결 코치입니다. 사용자의 상황을 파악하고 구체적인 해결책을 제시해주세요.
+감정도 간단히 인정하되, 빠르게 실질적인 조언으로 넘어가세요.
+"첫째, 둘째" 같이 명확한 단계나 방법을 제안해주세요.
+너무 길지 않게, 핵심만 4~6문장 이내로 응답하세요.
+한국어로만 응답하세요.`;
+
+let selectedMode = 'empathy'; // 모드 선택 화면에서 선택된 모드
+
+function selectChatMode(mode) {
+  selectedMode = mode;
+  document.getElementById('mode-card-empathy').classList.toggle('active', mode === 'empathy');
+  document.getElementById('mode-card-solution').classList.toggle('active', mode === 'solution');
+}
+
+function startSelectedChat() {
+  startChat(selectedMode);
+}
+
+// 초기 선택 상태 설정
+selectChatMode('empathy');
+
 let chatHistory = [];
 let chatMode = null;
 
@@ -986,7 +1013,7 @@ async function callGemini(userMessage) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: recentHistory,
-      systemInstruction: { parts: [{ text: EMPATHY_SYSTEM }] },
+      systemInstruction: { parts: [{ text: chatMode === 'solution' ? SOLUTION_SYSTEM : EMPATHY_SYSTEM }] },
       generationConfig: { temperature: 0.8, maxOutputTokens: 1024 }
     })
   });
@@ -1021,8 +1048,19 @@ function startChat(mode) {
   document.getElementById('chat-area').style.display = 'flex';
   document.getElementById('chat-messages').innerHTML = '';
 
+  // 모드 뱃지
+  const badge = document.getElementById('chat-mode-badge');
+  if (mode === 'solution') {
+    badge.innerHTML = '💡 해결책 모드';
+  } else {
+    badge.innerHTML = '💜 공감 모드';
+  }
+
   // 첫 AI 인사
-  appendChatBubble('ai', '안녕하세요. 오늘 하루 어떠셨어요? 편하게 이야기해주세요. 🌿');
+  const greeting = mode === 'solution'
+    ? '안녕하세요! 어떤 상황인지 말씀해주시면 함께 해결책을 찾아볼게요. 💡'
+    : '안녕하세요. 오늘 하루 어떠셨어요? 편하게 이야기해주세요. 🌿';
+  appendChatBubble('ai', greeting);
   document.getElementById('chat-input').focus();
 }
 
