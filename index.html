@@ -987,7 +987,7 @@ async function callGemini(userMessage) {
     body: JSON.stringify({
       contents: recentHistory,
       systemInstruction: { parts: [{ text: EMPATHY_SYSTEM }] },
-      generationConfig: { temperature: 0.8, maxOutputTokens: 500 }
+      generationConfig: { temperature: 0.8, maxOutputTokens: 1024 }
     })
   });
 
