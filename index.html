@@ -1269,17 +1269,40 @@ async function generateReport() {
     weekDates.forEach(d => { weekData[d] = data.checkins[d] || null; });
     const quant = getMode() === 'counseling' ? calculateQuantitativeData() : null;
 
-    let userMsg = `아래는 사용자의 최근 1주일 기록입니다:\n\n${JSON.stringify(weekData, null, 2)}`;
+    // AI 대화 기록 수집
+    const chatLogs = data.chatLogs || {};
+    const weekChatSummary = weekDates.map(d => {
+      const logs = chatLogs[d] || [];
+      if (!logs.length) return null;
+      const userMsgs = logs.filter(l => l.role === 'user').map(l => l.content).join(' / ');
+      return userMsgs ? `${d}: ${userMsgs}` : null;
+    }).filter(Boolean).join('\n');
+
+    let userMsg = `아래는 사용자의 최근 1주일 감정 기록입니다:\n\n${JSON.stringify(weekData, null, 2)}`;
+    if (weekChatSummary) userMsg += `\n\nAI 대화에서 사용자가 말한 내용:\n${weekChatSummary}`;
     if (quant) userMsg += `\n\n과제 이행 데이터:\n${JSON.stringify(quant, null, 2)}`;
-    userMsg += `\n\n이 기록을 분석하여 다음을 JSON 형태로 제공하세요:\n{"summary":"주간 감정 흐름 요약(3~4문장,따뜻한 톤)","frequentExpressions":["자주 쓴 표현"],"patterns":[{"pattern":"사고 습관(일상 언어)","examples":["실제 표현 예시"]}],"reframing":["리프레이밍 제안"],"emotionKeywords":{"감정":빈도수}${quant ? ',"taskInsight":"과제 이행과 감정 교차 분석"' : ''}}\nJSON만 출력하세요.`;
+    userMsg += `\n\n위 내용을 종합 분석하여 마크다운 형식으로 작성해주세요:
+## 💬 이번 주 감정 흐름
+(3~4문장, 따뜻한 톤)
 
-    const sysPrompt = '당신은 사용자의 감정 기록을 분석하는 따뜻한 코치입니다. 1주일간 기록에서 반복되는 사고 습관을 감지하고 일상적인 언어로 부드럽게 알려주세요. 절대로 "인지 왜곡","파국화","흑백사고" 같은 임상 전문 용어를 사용하지 마세요. 이것은 진단이 아니라 자기 인식을 돕는 것입니다.';
+## 🔍 자주 쓴 표현
+- 표현1
+- 표현2
 
-    const result = await callClaude(sysPrompt, userMsg, 1500);
-    const parsed = parseJson(result);
+## 🧠 사고 습관 패턴
+(일상 언어로, 전문용어 없이)
+
+## 💡 다르게 생각해볼까요?
+(리프레이밍 제안 2~3개)
+
+${quant ? '## ✅ 과제 이행 분석\n(과제 이행과 감정의 관계)' : ''}`;
+
+    const sysPrompt = '당신은 사용자의 감정 기록을 분석하는 따뜻한 코치입니다. 1주일간 기록에서 반복되는 사고 습관을 감지하고 일상적인 언어로 부드럽게 알려주세요. 절대로 "인지 왜곡","파국화","흑백사고" 같은 임상 전문 용어를 사용하지 마세요. 이것은 진단이 아니라 자기 인식을 돕는 것입니다. 마크다운 형식으로 작성하세요.';
+
+    const result = await callClaude(sysPrompt, userMsg, 2000);
     const weekKey = getWeekKey();
     data.weeklyReports = data.weeklyReports || {};
-    data.weeklyReports[weekKey] = { ...parsed, generatedAt: new Date().toISOString() };
+    data.weeklyReports[weekKey] = { rawText: result, generatedAt: new Date().toISOString() };
     saveData(data);
     renderReport();
   } catch (err) {
@@ -1370,11 +1393,58 @@ async function generateBriefing() {
     const dataStr = JSON.stringify(weekData, null, 2);
     const quantStr = JSON.stringify(quant, null, 2);
 
+    // AI 대화 기록 수집
+    const chatLogs = data.chatLogs || {};
+    const weekChatData = weekDates.map(d => {
+      const logs = chatLogs[d] || [];
+      if (!logs.length) return null;
+      const conversations = [];
+      for (let i = 0; i < logs.length; i += 2) {
+        if (logs[i] && logs[i+1]) {
+          conversations.push({ user: logs[i].content, ai: logs[i+1].content, mode: logs[i].mode });
+        }
+      }
+      return conversations.length ? { date: d, conversations } : null;
+    }).filter(Boolean);
+    const chatStr = weekChatData.length ? JSON.stringify(weekChatData, null, 2) : '(대화 기록 없음)';
+
     const clientSys = '당신은 따뜻하고 공감적인 심리 코치입니다. 내담자가 다음 상담 세션을 주도적으로 준비할 수 있도록 도와주세요. 절대로 진단하거나 판단하지 마세요. 임상 전문 용어를 사용하지 마세요. 격려와 부드러운 제안 톤을 유지하세요.';
-    const clientMsg = `아래는 내담자의 최근 1주일 기록입니다:\n\n${dataStr}\n\n과제 이행 데이터:\n${quantStr}\n\n다음을 포함한 세션 준비 브리핑을 마크다운으로 작성하세요:\n1. 이번 주 감정 흐름 요약 (따뜻한 톤, 전문 용어 없이)\n2. 다음 세션에서 꺼내볼 만한 주제 제안 2~3개\n3. 과제 이행 요약 (격려 톤)\n4. 반복 패턴 관련 부드러운 관찰`;
+    const clientMsg = `아래는 내담자의 최근 1주일 기록입니다:
+
+[감정 기록]
+${dataStr}
+
+[AI 대화 내역]
+${chatStr}
+
+[과제 이행 데이터]
+${quantStr}
+
+위 내용을 종합하여 다음을 포함한 세션 준비 브리핑을 마크다운으로 작성하세요:
+1. 이번 주 감정 흐름 요약 (따뜻한 톤, 전문 용어 없이)
+2. AI 대화에서 나눈 주요 고민 정리
+3. 다음 세션에서 꺼내볼 만한 주제 제안 2~3개
+4. 과제 이행 요약 (격려 톤)
+5. 반복 패턴 관련 부드러운 관찰`;
 
     const counselorSys = '당신은 임상 심리 어시스턴트입니다. 상담사가 세션을 효율적으로 준비할 수 있도록 객관적이고 건조한 임상 톤으로 보고하세요. CBT 전문 용어(인지 왜곡, 파국화, 흑백사고, 과일반화 등)를 적극 사용하세요. 정량적 수치는 별도로 제공되므로 패턴 해석과 세션 어젠다 제안에 집중하세요.';
-    const counselorMsg = `아래는 내담자의 최근 1주일 기록입니다:\n\n${dataStr}\n\n과제 이행 데이터:\n${quantStr}\n\n다음을 포함한 임상 브리핑을 마크다운으로 작성하세요:\n1. 감정 패턴 해석 (인지 왜곡 유형 명시)\n2. 미완료 과제의 맥락 분석 (회피, 동기 저하 등)\n3. 세션 어젠다 제안 (긴급/중간/낮음 분류)\n4. 주의 필요 사항`;
+    const counselorMsg = `아래는 내담자의 최근 1주일 기록입니다:
+
+[감정 기록]
+${dataStr}
+
+[AI 대화 내역]
+${chatStr}
+
+[과제 이행 데이터]
+${quantStr}
+
+위 내용을 종합하여 다음을 포함한 임상 브리핑을 마크다운으로 작성하세요:
+1. 감정 패턴 해석 (인지 왜곡 유형 명시)
+2. AI 대화에서 드러난 핵심 이슈 및 인지적 특성
+3. 미완료 과제의 맥락 분석 (회피, 동기 저하 등)
+4. 세션 어젠다 제안 (긴급/중간/낮음 분류)
+5. 주의 필요 사항`;
 
     const [clientView, counselorView] = await Promise.all([
       callClaude(clientSys, clientMsg, 1000),
