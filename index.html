@@ -1683,93 +1683,287 @@ function clearAllData() {
 }
 
 // ═══════════════════════════════════════════
-// 데모 데이터
+// 데모 데이터 (3주치 - 30대 직장인 남성, 번아웃/자책 패턴)
 // ═══════════════════════════════════════════
-function getDemoDates() {
+function getDemoDatesForWeeks(weeksBack) {
   const dates = [], today = new Date();
-  for (let i = 6; i >= 0; i--) {
+  const startOffset = weeksBack * 7;
+  for (let i = startOffset + 6; i >= startOffset; i--) {
     const d = new Date(today); d.setDate(d.getDate() - i);
     if (d.getDay() >= 1 && d.getDay() <= 5) dates.push(d.toISOString().slice(0,10));
   }
-  return dates.slice(0,5);
+  return dates.slice(0, 5);
 }
 
-const DEMO_FREE_TEXTS = [
-  '오늘 팀 회의에서 또 실수를 했다. 내가 준비한 자료에 오류가 있었는데, 팀장님이 바로 지적하셨다. 정말 쥐구멍에 들어가고 싶었다. 어차피 나는 이런 중요한 자리에서 항상 이런 식이다. 오늘도 망쳤다는 생각밖에 안 든다.',
-  '어젯밤에 잠을 잘 못 잤다. 자꾸 내일 발표가 걱정됐다. 불안한 게 가라앉질 않아서 새벽 3시까지 뒤척였다. 발표를 망치면 프로젝트 전체가 날아갈 것 같은 느낌이다. 최악의 경우를 자꾸 생각하게 된다.',
-  '오늘 발표는 그냥저냥 넘어갔다. 잘한 건 아닌데 망하지는 않았다. 근데 집에 오면서 또 생각이 많아졌다. 내가 항상 이렇게 준비가 부족한 것 같다. 매번 이런 식으로 겨우겨우 버티는 게 맞나 싶다.',
-  '오늘은 좀 쉬었다. 오랜만에 친구를 만났는데 기분이 조금 나아졌다. 그래도 집에 오니까 또 불안해졌다. 나만 뒤처지는 것 같은 느낌. 친구들은 다들 잘 나가는데 나는 항상 제자리인 것 같아서 슬프다.',
-  '주말인데 쉬지를 못했다. 월요일에 있을 보고서 때문에 계속 신경이 쓰인다. 어차피 내가 해봤자 결과가 좋을 리 없다는 생각이 든다. 왜 나는 항상 이렇게 걱정이 많을까. 좀 편안하게 살고 싶다.'
-];
+function getWeekKeyForDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const year = d.getFullYear();
+  const jan4 = new Date(year, 0, 4);
+  const start = new Date(year, 0, 1 + ((1 - jan4.getDay() + 7) % 7));
+  const weekNum = Math.ceil(((d - start) / 86400000 + 1) / 7);
+  return `${year}-W${String(weekNum).padStart(2,'0')}`;
+}
+
 const DEMO_ACTIONS = [
   { id: 'demo_a1', text: '산책 10분', createdAt: '' },
-  { id: 'demo_a2', text: '감정 일기 쓰기', createdAt: '' }
+  { id: 'demo_a2', text: '감정 일기 쓰기', createdAt: '' },
+  { id: 'demo_a3', text: '퇴근 후 업무 메일 안 보기', createdAt: '' }
 ];
-const DEMO_CHECKINS = [
-  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'퇴근하고 너무 피곤해서 못 했다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }],
-  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'비가 와서 나가기 싫었다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }],
-  [{ id:'demo_a1', text:'산책 10분', status:'done', note:'' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }],
-  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'그냥 하기 싫었다. 어차피 해도 달라지는 게 없는 것 같아서' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }],
-  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'보고서 준비하느라 시간이 없었다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'skip', note:'쓰려고 했는데 너무 지쳐서 그냥 잤다' }]
+
+// 3주 전 기록 (번아웃 시작)
+const WEEK3_TEXTS = [
+  '오늘 또 야근했다. 팀장님이 내일까지 보고서 수정하라고 했는데, 퇴근 시간 다 됐을 때 말씀하셨다. 항상 이런 식이다. 내가 무슨 말을 해도 달라지는 게 없어서 그냥 알겠다고만 했다. 집에 오니까 10시 반이다.',
+  '어젯밤에 새벽 2시까지 보고서 수정했는데 오늘 또 수정 지시가 왔다. 어차피 내가 뭘 해도 마음에 안 드시나보다. 점심도 못 먹고 일했는데 결국 이 모양이다. 나는 왜 항상 이렇게 일을 못할까.',
+  '오늘은 좀 나았다. 보고서가 통과됐다. 근데 기쁘다기보다는 그냥... 다행이다 싶은 느낌. 또 다른 일이 기다리고 있을 거라는 생각에 숨이 막힌다. 쉬고 싶다. 그냥 아무것도 하고 싶지 않다.',
+  '주말인데 월요일 생각에 일요일 저녁부터 우울해졌다. 친구들 만나자고 해도 나갈 에너지가 없다. 어차피 만나봤자 나만 지쳐있고, 다들 재밌게 사는 것 같아서 비교되기만 할 것 같다.',
+  '월요일 회의 준비하느라 주말 내내 노트북 앞에 있었다. 쉰 것 같지가 않다. 항상 이렇게 주말에도 일하면서 사는 게 정상인 건가. 몸이 너무 피곤한데 잠도 잘 안 온다.'
 ];
+const WEEK3_CHECKINS = [
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'야근해서 시간이 없었다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'skip', note:'보고서 수정 때문에 확인해야 했다' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'너무 지쳐서 바로 잤다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'skip', note:'팀장님 연락 올까봐 계속 확인함' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'done', note:'' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'나가기가 싫었다. 어차피 기분이 나아지지도 않을 것 같아서' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'skip', note:'습관적으로 확인했다' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'주말인데 일하느라 시간 없었다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'skip', note:'쓸 기력이 없었다' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'skip', note:'일하는 중이라 계속 확인' }]
+];
+
+// 2주 전 기록 (자책 심화)
+const WEEK2_TEXTS = [
+  '회의에서 또 내 의견이 무시당한 느낌이다. 말해봤자 항상 다른 사람 의견으로 결정되니까 어차피 입 열 필요가 없는 것 같다. 존재감이 없다. 내가 이 팀에 왜 있는 건지 모르겠다.',
+  '오늘 실수를 했다. 메일 발송할 때 첨부파일을 잘못 넣었다. 사소한 건데 하루 종일 자책했다. 또 이런 실수를 하다니. 나는 왜 항상 이 모양일까. 이러니까 인정을 못 받지.',
+  '상담 선생님이 "스스로에게 너무 가혹하다"고 하셨다. 머리로는 아는데 자꾸 "또 잘못했다", "항상 부족하다" 이런 생각이 든다. 바꾸고 싶은데 잘 안 된다.',
+  '오늘은 퇴근하고 동생이랑 저녁 먹었다. 오랜만에 좀 웃었다. 근데 집에 오니까 또 월요일이 걱정된다. 좋은 시간을 보내도 금방 불안해지는 게 짜증난다.',
+  '금요일인데 하나도 안 기쁘다. 주말에 또 일해야 할 것 같다. 어차피 쉬어도 쉬는 것 같지 않으니까 그냥 일이나 하자는 생각이 든다. 근데 몸이 너무 무겁다.'
+];
+const WEEK2_CHECKINS = [
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'의욕이 없었다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'skip', note:'불안해서 확인함' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'실수 때문에 기분이 안 좋아서 그냥 집에만 있었다' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'done', note:'' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'done', note:'' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'몸이 너무 무거워서' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'skip', note:'주말 업무 때문에 확인' }]
+];
+
+// 1주 전(이번 주) 기록 (작은 변화 시작)
+const WEEK1_TEXTS = [
+  '월요일인데 생각보다 버틸 만했다. 상담에서 배운 대로 "또 힘든 한 주가 시작됐다" 대신 "일단 오늘 하루만 보자"고 생각해봤다. 완전히 효과가 있는 건 아닌데, 조금 다른 느낌이었다.',
+  '오늘 팀장님한테 지적받았는데, 예전 같으면 "어차피 나는 항상 이래" 하면서 하루 종일 우울했을 텐데, "이번 건 실수지만 내가 항상 못하는 건 아니다"라고 생각해보려고 했다. 어색하다.',
+  '퇴근하고 산책을 했다. 별거 아닌 것 같은데, 밖에 나가니까 머리가 좀 맑아지는 느낌이 있었다. 근데 또 이게 오래 갈까 싶은 생각이 들었다. 자꾸 의심하게 된다.',
+  '오늘은 좀 힘들었다. 야근했고, 집에 오니까 11시였다. 어차피 내일도 이럴 거라는 생각이 들었다. 그래도 감정 일기는 썼다. 쓰면서 "오늘 힘들었다"는 걸 인정하는 게 조금 도움이 됐다.',
+  '금요일이다. 이번 주는 저번 주보다 좀 나았던 것 같다. 완전히 괜찮은 건 아닌데, 조금씩 다르게 생각해보려는 시도는 하고 있다. 주말엔 진짜 좀 쉬고 싶다.'
+];
+const WEEK1_CHECKINS = [
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'월요일이라 지쳐서' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'오늘은 패스' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'done', note:'' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'done', note:'' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'skip', note:'야근해서 못 함' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'skip', note:'야근 중이라 확인함' }],
+  [{ id:'demo_a1', text:'산책 10분', status:'done', note:'' }, { id:'demo_a2', text:'감정 일기 쓰기', status:'done', note:'' }, { id:'demo_a3', text:'퇴근 후 업무 메일 안 보기', status:'done', note:'' }]
+];
+
+// AI 대화 기록
+const DEMO_CHAT_LOGS = {
+  // 이번 주 대화
+  week1: [
+    { role: 'user', content: '오늘 또 팀장님한테 지적받았어요. 저는 왜 항상 이럴까요.', mode: 'empathy' },
+    { role: 'ai', content: '지적받으면 마음이 많이 힘드셨겠어요. "항상 이렇다"고 느껴지실 만큼 자주 그런 상황이 있으셨나봐요. 오늘 어떤 일이 있으셨는지 조금 더 이야기해주실 수 있을까요?', mode: 'empathy' },
+    { role: 'user', content: '보고서 양식을 잘못 썼대요. 사소한 건데 왜 이렇게 자책이 되는지 모르겠어요.', mode: 'empathy' },
+    { role: 'ai', content: '사소한 실수인데도 자책이 크게 느껴지는 거군요. 그 마음이 참 무겁겠어요. 혹시 실수했을 때 스스로에게 어떤 말을 하게 되시나요?', mode: 'empathy' }
+  ]
+};
+
+// 주간 리포트 데이터
+const DEMO_REPORTS = {
+  week3: {
+    rawText: `## 💬 이번 주 감정 흐름
+
+이번 주는 업무 과부하로 많이 지치셨네요. 야근이 잦았고, 주말에도 일을 하시면서 "쉬고 싶다"는 말씀이 여러 번 나왔어요. 보고서 통과됐을 때도 기쁨보다는 "다행이다"라는 안도감이 더 컸던 것 같고요. 에너지가 많이 고갈된 한 주였어요.
+
+## 🔍 자주 쓴 표현
+- 항상 (4회)
+- 또 (3회)
+- 어차피 (3회)
+- 못 (2회)
+
+## 🧠 사고 습관 패턴
+
+"항상 이런 식이다", "어차피 달라지는 게 없다"처럼 한 가지 상황을 전체로 확대하는 표현이 자주 보였어요. 힘든 상황이 계속되다 보니 "앞으로도 이럴 것"이라는 생각이 굳어지고 있는 것 같아요.
+
+## 💡 다르게 생각해볼까요?
+- "항상 이래"라고 느껴질 때, 정말 100% 그랬는지 한 번 떠올려보는 건 어떨까요?
+- 보고서가 통과된 수요일처럼, 잘 넘어간 날도 있었어요.
+
+## ✅ 과제 이행 분석
+산책은 1/5일, 업무 메일 안 보기는 1/5일로 어려우셨어요. 야근과 주말 근무가 원인이었는데, "과제를 못 했다"보다는 "그만큼 일이 많았다"로 봐주셔도 좋을 것 같아요.`,
+    generatedAt: ''
+  },
+  week2: {
+    rawText: `## 💬 이번 주 감정 흐름
+
+이번 주는 자책감이 많이 올라온 한 주였어요. 회의에서 의견이 무시당하는 느낌, 사소한 실수에 하루 종일 괴로워했던 것 등 스스로를 향한 비난이 많았어요. 동생과 저녁 먹으면서 잠깐 웃은 목요일이 그나마 숨통이 트인 날이었네요.
+
+## 🔍 자주 쓴 표현
+- 또 (4회)
+- 항상 (3회)
+- 어차피 (2회)
+- 왜 (3회)
+
+## 🧠 사고 습관 패턴
+
+"또 실수했다", "항상 부족하다"처럼 자기 비난이 반복적으로 나타났어요. 상담 선생님이 "스스로에게 가혹하다"고 하셨다는데, 정말 그런 것 같아요. 좋은 순간(목요일 저녁)도 금방 불안으로 덮이는 패턴이 보여요.
+
+## 💡 다르게 생각해볼까요?
+- 실수 한 번이 "항상 부족한 나"를 증명하는 건 아니에요.
+- 동생과 웃을 수 있었던 건, 지금도 즐거움을 느낄 수 있다는 증거예요.
+
+## ✅ 과제 이행 분석
+산책 2/5일, 감정 일기 5/5일로 일기는 꾸준히 쓰셨어요. 감정을 기록하는 것 자체가 작은 돌봄이에요. 산책은 "의욕이 없어서" 못 한 날이 많았는데, 그 의욕 없음도 번아웃의 신호일 수 있어요.`,
+    generatedAt: ''
+  },
+  week1: {
+    rawText: `## 💬 이번 주 감정 흐름
+
+이번 주는 조금 다른 시도가 있었어요. "또 힘든 한 주" 대신 "오늘 하루만 보자"고 생각해보시거나, 지적받았을 때 "항상 못하는 건 아니다"라고 스스로 말해보셨잖아요. 어색하고 완전히 효과 있는 건 아니었지만, 변화의 시작이에요.
+
+## 🔍 자주 쓴 표현
+- 또 (2회)
+- 어차피 (2회)
+- 조금 (3회)
+- 근데 (3회)
+
+## 🧠 사고 습관 패턴
+
+예전보다 "항상", "절대" 같은 극단적 표현이 줄었어요. 대신 "조금 다른 느낌", "완전히는 아니지만"처럼 중간 지대를 인정하는 표현이 늘었어요. 아직 의심("이게 오래 갈까")이 따라붙지만, 방향은 좋아요.
+
+## 💡 다르게 생각해볼까요?
+- 산책 후 "머리가 맑아지는 느낌"을 경험하셨잖아요. 그 작은 경험이 쌓이면 변화가 돼요.
+- "오래 갈까 의심된다"는 건, 좋아지고 싶다는 마음이 있다는 뜻이기도 해요.
+
+## ✅ 과제 이행 분석
+산책 2/5일, 감정 일기 5/5일, 업무 메일 안 보기 4/5일로 저번 주보다 전반적으로 나아졌어요. 특히 야근한 목요일에도 감정 일기를 쓴 건 정말 대단해요.`,
+    generatedAt: ''
+  }
+};
+
+// 세션 브리핑 데이터
+const DEMO_BRIEFING = {
+  clientView: `## 🌱 이번 주 세션 준비 브리핑
+
+### 이번 주 어떠셨나요?
+
+지난 3주간 정말 고생 많으셨어요. 처음에는 야근과 업무 과부하로 번아웃 상태였고, 그 다음 주는 자책감이 심했죠. 그런데 이번 주는 조금 다른 시도를 하셨어요. 완벽하진 않아도, "오늘 하루만 보자", "항상 못하는 건 아니다"라고 스스로에게 말해보셨잖아요. 그게 쉬운 일이 아니에요.
+
+### 다음 세션에서 꺼내볼 만한 이야기
+
+1. **"어색하다"고 하셨던 새로운 생각들** — 예전 패턴과 다르게 생각하려고 할 때 어떤 느낌이었는지, 어떤 점이 어려웠는지 이야기해보면 좋겠어요.
+
+2. **산책 후의 "맑아지는 느낌"** — 그 경험을 어떻게 더 자주 만들 수 있을지 함께 생각해봐요.
+
+3. **"의심이 든다"는 마음** — 좋아질 것 같다가도 "이게 오래 갈까" 싶은 마음, 그것도 중요한 주제예요.
+
+### 과제는 어떠셨나요?
+
+감정 일기는 3주 내내 거의 매일 쓰셨어요. 이건 정말 꾸준한 노력이에요. 산책과 업무 메일 안 보기는 아직 어렵지만, 이번 주에 좀 나아졌어요. 야근이 줄어들면 더 해볼 수 있을 것 같아요.`,
+
+  counselorView: `## 🩺 임상 브리핑 — 3주간 요약
+
+### 진행 경과
+
+- **1주차**: 심한 번아웃 상태. 수면 부족, 만성 야근, 주말 근무 지속. 무력감과 "항상/어차피" 표현 빈번.
+- **2주차**: 자책 패턴 심화. 사소한 실수에 과도한 자기비난. 상담 피드백("스스로에게 가혹하다") 인지.
+- **3주차**: 인지적 재구조화 시도 시작. "오늘 하루만", "항상 못하는 건 아니다" 등 대안적 사고 연습. 아직 불안정하나 긍정적 방향.
+
+### 인지 패턴 분석
+
+| 패턴 | 빈도 | 변화 추이 |
+|------|------|----------|
+| 과일반화 (항상/절대) | 높음→중간 | 3주차 감소 |
+| 파국화 | 중간 | 유지 |
+| 자기비난 | 높음 | 유지, 일부 자각 |
+| 당위 진술 (해야 한다) | 중간 | 유지 |
+
+### 과제 이행 분석 (3주 누적)
+
+- **감정 일기**: 14/15일 (93%) — 높은 순응도
+- **산책 10분**: 5/15일 (33%) — 에너지 저하, 야근 영향
+- **업무 메일 안 보기**: 6/15일 (40%) — 경계 설정 어려움
+
+### 세션 어젠다 제안
+
+| 우선순위 | 주제 |
+|---------|------|
+| 긴급 | 인지 재구조화 강화: "어색함"을 극복하는 연습 |
+| 중간 | 경계 설정: 야근 거절, 주말 보호 전략 |
+| 낮음 | 작은 성공 경험 쌓기: 산책 등 행동 활성화 |
+
+### 주의 사항
+
+- 자해/자살 관련 표현 없음
+- 번아웃 지속 시 신체화 증상 모니터링 필요
+- 직장 내 지지 자원 탐색 권장`,
+
+  quantitativeData: {
+    taskAdherence: {
+      '산책 10분': { done: 5, recorded: 15, label: '5/15일' },
+      '감정 일기 쓰기': { done: 14, recorded: 15, label: '14/15일' },
+      '퇴근 후 업무 메일 안 보기': { done: 6, recorded: 15, label: '6/15일' }
+    },
+    overallAdherence: '56%',
+    totalDone: 25, totalCount: 45,
+    expressionFrequency: {
+      keywordFreq: { '항상': 10, '또': 9, '어차피': 7, '못': 5, '매번': 3 },
+      emotionFreq: { '힘들': 6, '불안': 5, '지쳐': 4, '우울': 3, '걱정': 3 }
+    }
+  }
+};
 
 function loadDemoData() {
   if (!confirm('데모 데이터를 불러오면 기존 기록이 모두 지워집니다. 계속할까요?')) return;
   closeSettings();
 
   const now = new Date().toISOString();
-  const dates = getDemoDates();
   const s = getSettings();
   s.mode = 'counseling'; s.onboardingDone = true;
   saveSettings(s);
 
-  const data = getData();
+  const data = { actions: [], checkins: {}, sessions: [], weeklyReports: {}, sessionBriefings: {}, chatLogs: {} };
   data.actions = DEMO_ACTIONS.map(a => ({ ...a, createdAt: todayStr() }));
 
-  dates.forEach((date, i) => {
-    data.checkins[date] = {
-      freeText: DEMO_FREE_TEXTS[i],
-      items: DEMO_CHECKINS[i],
-      aiFeedback: i === 2 ? '오늘 산책도 하시고 정말 수고하셨어요! 발표가 무사히 넘어간 것도 작은 성취예요. 내일도 한 걸음씩 함께해요. 🌱' : null
-    };
+  // 3주 전 데이터
+  const week3Dates = getDemoDatesForWeeks(2);
+  week3Dates.forEach((date, i) => {
+    data.checkins[date] = { freeText: WEEK3_TEXTS[i], items: WEEK3_CHECKINS[i], aiFeedback: null };
   });
+  if (week3Dates.length) {
+    const wk = getWeekKeyForDate(week3Dates[0]);
+    data.weeklyReports[wk] = { ...DEMO_REPORTS.week3, generatedAt: now };
+  }
 
-  data.weeklyReports = data.weeklyReports || {};
-  data.weeklyReports[getWeekKey()] = {
-    summary: '이번 주는 꽤 버거운 한 주였네요. 회의 실수, 발표 준비, 주말 보고서까지 쉴 틈이 없었어요. 그 와중에 친구를 만난 수요일엔 잠깐 숨통이 트이는 것 같았고요. 작은 순간들이 있었지만, 전반적으로 "어차피"와 "항상"이 많이 나왔던 한 주였어요.',
-    frequentExpressions: ['항상', '어차피', '또', '매번', '못'],
-    patterns: [
-      { pattern: '안 좋은 일이 생겼을 때 "최악의 결과"를 먼저 떠올리는 패턴이 이번 주 3번 있었어요.', examples: ['발표를 망치면 프로젝트 전체가 날아갈 것 같은 느낌이다', '어차피 내가 해봤자 결과가 좋을 리 없다'] },
-      { pattern: '"항상", "매번" 같은 전부-아니면-전무 표현이 자주 보여요. 한 번 있었던 일을 "나는 항상 이래"로 넓혀서 생각하는 경향이 있었어요.', examples: ['항상 이런 식이다', '매번 이런 식으로 겨우겨우 버티는 게 맞나'] }
-    ],
-    reframing: ['이번 주 발표가 "망하지 않았다"고 하셨잖아요. 정말 항상 이런 결과인지, 한 번 돌아보면 어떨까요?', '"어차피 해봤자"라고 느껴질 때, 그 생각이 나를 돕고 있는 건지 한번 물어봐도 좋을 것 같아요.'],
-    emotionKeywords: { '불안': 3, '힘들': 2, '슬프': 1, '걱정': 2 },
-    taskInsight: '과제를 못 한 날에 "어차피 해봤자", "너무 지쳐서" 같은 표현이 집중되어 있어요. 못 한 것 자체보다 그때의 감정이 다음 세션에서 이야기 나눠볼 주제가 될 수 있어요.',
-    generatedAt: now
-  };
+  // 2주 전 데이터
+  const week2Dates = getDemoDatesForWeeks(1);
+  week2Dates.forEach((date, i) => {
+    data.checkins[date] = { freeText: WEEK2_TEXTS[i], items: WEEK2_CHECKINS[i], aiFeedback: i === 2 ? '상담에서 배운 걸 실천하려는 모습이 보여서 뿌듯해요. 스스로에게 조금 더 친절해지는 연습, 함께 해봐요. 🌱' : null };
+  });
+  if (week2Dates.length) {
+    const wk = getWeekKeyForDate(week2Dates[0]);
+    data.weeklyReports[wk] = { ...DEMO_REPORTS.week2, generatedAt: now };
+  }
 
-  data.sessionBriefings = data.sessionBriefings || {};
-  data.sessionBriefings[todayStr()] = {
-    clientView: `# 이번 주 세션 준비 브리핑 🌱\n\n## 이번 주 어떠셨나요?\n\n회의 실수, 발표 준비, 주말 보고서까지 정말 쉴 틈이 없는 한 주였네요. 그 사이에 친구를 만나면서 잠깐 숨통이 트이기도 했고요. 많이 수고하셨어요.\n\n## 다음 세션에서 꺼내보면 어떨까요?\n\n1. **"어차피 해봤자"라는 생각** — 산책을 미루면서 "해도 달라지는 게 없는 것 같다"고 하셨는데, 이 느낌이 어디서 오는지 이야기해보면 좋을 것 같아요.\n\n2. **발표 전날 밤** — 잠을 못 주무셨던 그 밤의 불안이 어떤 건지, 좀 더 들여다볼 기회가 될 것 같아요.\n\n3. **"나만 뒤처지는 것 같다"는 감각** — 친구들과 비교하면서 슬프셨던 부분도요.\n\n## 과제는 어떠셨나요?\n\n감정 일기는 4일을 잘 쓰셨어요. 산책은 이번 주 1번 하셨는데, 못 하신 날들에 다 나름의 이유가 있었네요. 잘 못했다고 생각하기보다는, 왜 어려웠는지를 가져가시는 게 더 도움이 될 것 같아요.`,
-    counselorView: `# 임상 브리핑 — 주간 요약\n\n## 감정 패턴 해석\n\n- **파국화(Catastrophizing)** 3회 확인: "발표를 망치면 프로젝트 전체가 날아갈 것" 등 부정적 결과를 과대평가하는 패턴 반복\n- **과일반화(Overgeneralization)**: "항상 이런 식", "매번 겨우겨우" — 단발 사건을 전체 자기 서사로 확장\n- 수요일 이후 자기비하 표현 증가: 친구 만남 후 비교로 인한 열등감 촉발 가능성\n\n## 미완료 과제 맥락 분석\n\n- **산책 10분 (1/5일)**: 회피 패턴 의심. "어차피 해봤자 달라지는 게 없다"는 무망감(Hopelessness) 요소 포함\n- **감정 일기 (4/5일)**: 금요일 미완료는 소진(Burnout) 신호로 해석 가능\n\n## 세션 어젠다 제안\n\n| 우선순위 | 주제 |\n|---------|------|\n| 긴급 | 무망감 탐색: "어차피 해봤자" 핵심 신념 확인 |\n| 중간 | 수면 문제 및 발표 전 불안 패턴 |\n| 낮음 | 사회적 비교로 인한 열등감 |\n\n## 주의 사항\n\n특이 사항 없음. 자해/자살 관련 표현 없음.`,
-    quantitativeData: {
-      taskAdherence: {
-        '산책 10분': { done: 1, recorded: 5, label: '1/5일' },
-        '감정 일기 쓰기': { done: 4, recorded: 5, label: '4/5일' }
-      },
-      overallAdherence: '50%',
-      totalDone: 5, totalCount: 10,
-      expressionFrequency: {
-        keywordFreq: { '항상': 5, '어차피': 4, '또': 3, '매번': 2, '못': 3 },
-        emotionFreq: { '불안': 3, '힘들': 2, '걱정': 2, '슬프': 1 }
-      }
-    },
-    generatedAt: now
-  };
+  // 이번 주 데이터
+  const week1Dates = getDemoDatesForWeeks(0);
+  week1Dates.forEach((date, i) => {
+    data.checkins[date] = { freeText: WEEK1_TEXTS[i], items: WEEK1_CHECKINS[i], aiFeedback: i === 2 ? '산책하면서 머리가 맑아지는 경험을 하셨군요! 작은 변화가 쌓이면 큰 차이가 돼요. 오늘도 한 걸음 나아갔어요. 🌿' : null };
+  });
+  if (week1Dates.length) {
+    const wk = getWeekKeyForDate(week1Dates[0]);
+    data.weeklyReports[wk] = { ...DEMO_REPORTS.week1, generatedAt: now };
+    // 이번 주 AI 대화 기록
+    data.chatLogs[week1Dates[1]] = DEMO_CHAT_LOGS.week1;
+  }
+
+  // 세션 브리핑
+  data.sessionBriefings[todayStr()] = { ...DEMO_BRIEFING, generatedAt: now };
 
   saveData(data);
   buildNav();
-  showToast('데모 데이터를 불러왔어요! 🎬');
+  showToast('3주치 데모 데이터를 불러왔어요! 🎬');
   showPage('record');
 }
 
