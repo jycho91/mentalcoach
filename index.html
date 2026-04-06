@@ -568,9 +568,7 @@ function saveSettings(s) { localStorage.setItem('mcSettings', JSON.stringify(s))
 
 function getMode() { return getSettings().mode || null; }
 function getApiKey() { return getSettings().apiKey || ''; }
-// 데모용 기본 Gemini API 키 (팀 공용, 데모 후 삭제 예정)
-const DEFAULT_GEMINI_KEY = 'AIzaSyDCT4PcbrjnlDae9TQMAeI1-JSXenskzj8';
-function getGeminiApiKey() { return getSettings().geminiApiKey || DEFAULT_GEMINI_KEY; }
+function getGeminiApiKey() { return getSettings().geminiApiKey || ''; }
 
 function todayStr() {
   const n = new Date();
@@ -1117,6 +1115,7 @@ async function sendChatMessage() {
     hideTypingIndicator();
     if (err.message === 'GEMINI_KEY_MISSING') {
       appendChatBubble('ai', '설정에서 Gemini API 키를 먼저 입력해주세요.');
+      setTimeout(() => openSettings(), 800);
     } else if (err.message === 'GEMINI_KEY_INVALID') {
       appendChatBubble('ai', 'API 키가 올바르지 않은 것 같아요. 설정에서 확인해주세요.');
     } else if (err.message === 'RATE_LIMIT') {
@@ -1398,10 +1397,18 @@ async function generateBriefing() {
 }
 
 function handleApiError(err) {
-  if (err.message === 'API_KEY_MISSING')  showToast('설정에서 API 키를 입력해주세요');
-  else if (err.message === 'API_KEY_INVALID') showToast('API 키가 올바르지 않아요');
-  else if (err.message === 'RATE_LIMIT')  showToast('잠시 후 다시 시도해주세요 (요청 한도 초과)');
-  else { showToast('오류가 발생했어요. 다시 시도해주세요.'); console.error(err); }
+  if (err.message === 'API_KEY_MISSING') {
+    showToast('설정에서 Gemini API 키를 입력해주세요');
+    setTimeout(() => openSettings(), 800);
+  } else if (err.message === 'API_KEY_INVALID') {
+    showToast('API 키가 올바르지 않아요. 설정에서 확인해주세요');
+    setTimeout(() => openSettings(), 800);
+  } else if (err.message === 'RATE_LIMIT') {
+    showToast('잠시 후 다시 시도해주세요 (요청 한도 초과)');
+  } else {
+    showToast('오류가 발생했어요. 다시 시도해주세요.');
+    console.error(err);
+  }
 }
 
 // ═══════════════════════════════════════════
