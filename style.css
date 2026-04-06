@@ -1,11 +1,24 @@
-/* 기본 설정 */
+/* ============================================
+   기본 설정 & CSS 변수
+   ============================================ */
 :root {
-  --color-primary: #7c6fcd;   /* 보라 — 메인 컬러 */
-  --color-success: #52b788;   /* 초록 — 완료/성공 */
-  --color-emotion: #e07b9a;   /* 로즈 — 감정 */
+  --color-primary: #7c6fcd;
+  --color-primary-light: #ece9fa;
+  --color-success: #52b788;
+  --color-success-light: #e8f5e9;
+  --color-emotion: #e07b9a;
+  --color-emotion-light: #fce4ec;
   --color-bg: #f8f7ff;
+  --color-surface: #ffffff;
   --color-text: #2d2d2d;
+  --color-text-secondary: #777;
+  --color-border: #e8e6f0;
+  --color-danger: #e05757;
+  --color-quant-bg: #e8f0fe;
+  --color-ai-bg: #ece9fa;
   --max-width: 680px;
+  --radius: 14px;
+  --tab-height: 60px;
 }
 
 * {
@@ -21,4 +34,679 @@ body {
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 0 16px;
+  padding-bottom: calc(var(--tab-height) + 16px);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================
+   공통 컴포넌트
+   ============================================ */
+.hidden { display: none !important; }
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(124, 111, 205, 0.08);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.btn-primary:hover { background: #6b5ebc; }
+.btn-primary:active { transform: scale(0.97); }
+
+.btn-secondary {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+.btn-secondary:hover { background: #ddd8f3; }
+
+.btn-danger {
+  background: #fdeaea;
+  color: var(--color-danger);
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-lg {
+  padding: 14px 28px;
+  font-size: 16px;
+}
+
+/* 헤더 영역 */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 12px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.settings-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================
+   하단 탭바
+   ============================================ */
+#tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--max-width);
+  height: var(--tab-height);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  border-top: 1px solid var(--color-border);
+  z-index: 100;
+  padding: 0 4px;
+}
+
+.tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: color 0.2s;
+  font-family: inherit;
+  min-width: 0;
+  flex: 1;
+}
+
+.tab-btn.active {
+  color: var(--color-primary);
+}
+
+.tab-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tab-label {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ============================================
+   모달 (설정)
+   ============================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 200;
+  animation: fadeIn 0.2s;
+}
+
+.modal {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--max-width);
+  max-height: 85vh;
+  background: var(--color-surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  z-index: 201;
+  overflow-y: auto;
+  animation: slideUp 0.25s ease-out;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+}
+
+.modal-header h2 {
+  font-size: 18px;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 26px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  padding: 0 4px;
+}
+
+.modal-body {
+  padding: 16px 20px 32px;
+}
+
+/* ============================================
+   폼 요소
+   ============================================ */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 14px;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s;
+  background: var(--color-surface);
+}
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  background: var(--color-surface);
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* ============================================
+   온보딩
+   ============================================ */
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  text-align: center;
+  padding: 20px;
+}
+
+.onboarding-logo {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.onboarding-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 32px;
+}
+
+.onboarding-question {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.onboarding-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.onboarding-buttons .btn {
+  min-width: 120px;
+  padding: 14px 32px;
+  font-size: 16px;
+}
+
+.onboarding-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================
+   과제 체크리스트
+   ============================================ */
+.task-list {
+  list-style: none;
+}
+
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.task-item:last-child { border-bottom: none; }
+
+.task-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--color-border);
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+.task-checkbox.done {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #fff;
+}
+
+.task-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-text {
+  font-size: 15px;
+  line-height: 1.4;
+}
+.task-text.done {
+  text-decoration: line-through;
+  color: var(--color-text-secondary);
+}
+
+.task-note-input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--color-bg);
+}
+.task-note-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* ============================================
+   토스트 메시지
+   ============================================ */
+.toast {
+  position: fixed;
+  bottom: calc(var(--tab-height) + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-text);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 300;
+  animation: fadeIn 0.2s;
+  pointer-events: none;
+}
+
+/* ============================================
+   로딩
+   ============================================ */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+.loading-text {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================
+   리포트 카드
+   ============================================ */
+.report-section {
+  margin-bottom: 16px;
+}
+
+.report-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 3px 4px 3px 0;
+}
+
+.chip-emotion {
+  background: var(--color-emotion-light);
+  color: var(--color-emotion);
+}
+
+.quote-card {
+  background: var(--color-bg);
+  border-left: 3px solid var(--color-primary);
+  padding: 14px 16px;
+  border-radius: 0 10px 10px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+/* ============================================
+   세션 브리핑 토글
+   ============================================ */
+.toggle-container {
+  display: flex;
+  background: var(--color-bg);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+}
+.toggle-btn.active {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.briefing-content {
+  animation: fadeIn 0.3s;
+}
+
+/* 정량 데이터 섹션 (상담사 뷰) */
+.quant-section {
+  background: var(--color-quant-bg);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.quant-section .section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4a7ab5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+/* AI 해석 섹션 (상담사 뷰) */
+.ai-section {
+  background: var(--color-ai-bg);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.ai-section .section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+/* 디스클레이머 */
+.disclaimer {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: #f5f5f5;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-top: 16px;
+  line-height: 1.5;
+}
+
+/* 이행률 바 */
+.adherence-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.adherence-label {
+  font-size: 14px;
+  min-width: 100px;
+}
+
+.adherence-track {
+  flex: 1;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.adherence-fill {
+  height: 100%;
+  background: var(--color-success);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.adherence-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* 키워드 빈도 뱃지 */
+.freq-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  font-size: 13px;
+  margin: 3px 4px 3px 0;
+}
+
+.freq-badge .count {
+  font-weight: 700;
+  color: var(--color-emotion);
+}
+
+/* ============================================
+   설정 모달 내부
+   ============================================ */
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--color-text);
+}
+
+.mode-select {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-option {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.mode-option.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+/* 과제 관리 */
+.task-manage-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.task-manage-item:last-child { border-bottom: none; }
+
+.task-manage-text {
+  flex: 1;
+  font-size: 14px;
+}
+
+.task-delete-btn {
+  background: none;
+  border: none;
+  color: var(--color-danger);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 2px 6px;
+}
+
+.task-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.task-add-row input {
+  flex: 1;
+}
+
+/* ============================================
+   빈 상태 안내
+   ============================================ */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--color-text-secondary);
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.empty-state-text {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ============================================
+   애니메이션
+   ============================================ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translate(-50%, 100%); }
+  to { transform: translate(-50%, 0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
