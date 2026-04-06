@@ -389,7 +389,11 @@
 
     <!-- 채팅 UI (대화 중) -->
     <div id="chat-area" class="chat-container" style="display: none;">
-      <div id="chat-mode-badge" style="text-align:center; padding: 8px 0 4px; font-size: 13px; color: var(--text-secondary);"></div>
+      <div style="display:flex; align-items:center; justify-content:space-between; padding: 8px 0 4px;">
+        <button class="btn btn-ghost btn-sm" onclick="resetChat()">← 뒤로</button>
+        <div id="chat-mode-badge" style="font-size: 13px; color: var(--text-secondary);"></div>
+        <div style="width:60px;"></div>
+      </div>
       <div class="chat-messages" id="chat-messages"></div>
       <div class="chat-input-area">
         <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요..."
@@ -1040,6 +1044,7 @@ function startChat(mode) {
   chatMode = mode;
   chatHistory = [];
   document.getElementById('chat-mode-select').style.display = 'none';
+  document.getElementById('chat-log-list').style.display = 'none';
   document.getElementById('chat-area').style.display = 'flex';
   document.getElementById('chat-messages').innerHTML = '';
 
@@ -1063,6 +1068,7 @@ function resetChat() {
   chatMode = null;
   chatHistory = [];
   document.getElementById('chat-mode-select').style.display = 'block';
+  document.getElementById('chat-log-list').style.display = 'block';
   document.getElementById('chat-area').style.display = 'none';
   renderChatLogList();
 }
