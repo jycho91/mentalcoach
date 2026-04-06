@@ -206,7 +206,8 @@
     .info-box { background: var(--teal-light); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--teal); line-height: 1.6; margin-bottom: 14px; }
 
     /* ── ONBOARDING ── */
-    #page-onboarding {
+    #page-onboarding { /* display는 .page / .page.active 로 제어 */ }
+    .onb-inner {
       display: flex; flex-direction: column; align-items: center;
       justify-content: center; min-height: 70vh; text-align: center;
     }
@@ -253,6 +254,29 @@
 
     .disclaimer { font-size: 11px; color: var(--text-muted); background: var(--bg); padding: 10px 13px; border-radius: 8px; line-height: 1.55; margin-top: 14px; }
 
+    /* ── CHAT UI ── */
+    .chat-container { display: flex; flex-direction: column; height: calc(100vh - 180px); min-height: 400px; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 12px 0; display: flex; flex-direction: column; gap: 12px; }
+    .chat-bubble { max-width: 85%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.6; animation: fadeIn .2s ease; }
+    .chat-bubble.user { background: var(--primary); color: #fff; align-self: flex-end; border-bottom-right-radius: 6px; }
+    .chat-bubble.ai { background: var(--surface); color: var(--text); align-self: flex-start; border-bottom-left-radius: 6px; box-shadow: var(--shadow); }
+    .chat-input-area { display: flex; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border); background: var(--bg); }
+    .chat-input { flex: 1; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 24px; font-size: 14px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border .2s; }
+    .chat-input:focus { border-color: var(--primary); }
+    .chat-send-btn { width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 18px; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; }
+    .chat-send-btn:hover { background: var(--primary-dark); }
+    .chat-send-btn:disabled { background: var(--border); cursor: not-allowed; }
+    .chat-mode-card { background: var(--surface); border: 2px solid var(--border); border-radius: 14px; padding: 16px; cursor: pointer; transition: all .2s; text-align: center; }
+    .chat-mode-card:hover { border-color: var(--primary); }
+    .chat-mode-card.active { border-color: var(--primary); background: var(--primary-light); }
+    .chat-mode-icon { font-size: 28px; margin-bottom: 6px; }
+    .chat-mode-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .chat-mode-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+    .chat-typing { display: flex; gap: 4px; padding: 12px 16px; }
+    .chat-typing-dot { width: 8px; height: 8px; background: var(--text-muted); border-radius: 50%; animation: pulse 1.2s infinite; }
+    .chat-typing-dot:nth-child(2) { animation-delay: .2s; }
+    .chat-typing-dot:nth-child(3) { animation-delay: .4s; }
+
     /* AI 분석 콘텐츠 마크다운 스타일 */
     .md-content { font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
     .md-content strong { font-weight: 700; }
@@ -297,15 +321,17 @@
 
   <!-- ══════════════ 온보딩 ══════════════ -->
   <div id="page-onboarding" class="page active">
-    <div class="onb-logo">🌱</div>
-    <div class="onb-title">마음 코치</div>
-    <div class="onb-desc">매일의 감정을 기록하고,<br>나의 사고 습관을 알아차려요.</div>
-    <div class="onb-question">현재 상담을 받고 계세요?</div>
-    <div class="onb-btns">
-      <button class="onb-btn onb-btn-yes" onclick="finishOnboarding('counseling')">네, 받고 있어요</button>
-      <button class="onb-btn onb-btn-no"  onclick="finishOnboarding('general')">아니요</button>
+    <div class="onb-inner">
+      <div class="onb-logo">🌱</div>
+      <div class="onb-title">마음 코치</div>
+      <div class="onb-desc">매일의 감정을 기록하고,<br>나의 사고 습관을 알아차려요.</div>
+      <div class="onb-question">현재 상담을 받고 계세요?</div>
+      <div class="onb-btns">
+        <button class="onb-btn onb-btn-yes" onclick="finishOnboarding('counseling')">네, 받고 있어요</button>
+        <button class="onb-btn onb-btn-no"  onclick="finishOnboarding('general')">아니요</button>
+      </div>
+      <div class="onb-hint">나중에 설정에서 언제든 변경할 수 있어요</div>
     </div>
-    <div class="onb-hint">나중에 설정에서 언제든 변경할 수 있어요</div>
   </div>
 
   <!-- ══════════════ 오늘 기록 ══════════════ -->
@@ -333,6 +359,34 @@
 
     <div id="record-save-area" style="margin-top:8px;">
       <button class="btn btn-primary btn-full" onclick="saveRecord()">오늘 기록 저장하기</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ AI 대화 ══════════════ -->
+  <div id="page-chat" class="page">
+    <div class="page-title">AI 대화</div>
+    <div class="page-subtitle">마음을 나눠보세요. AI가 따뜻하게 들어드려요.</div>
+
+    <!-- 모드 선택 (대화 시작 전) -->
+    <div id="chat-mode-select">
+      <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+        <div class="chat-mode-card active" onclick="startChat('empathy')">
+          <div class="chat-mode-icon">💜</div>
+          <div class="chat-mode-title">공감 모드</div>
+          <div class="chat-mode-desc">따뜻하게 들어주고 감정을 반영해요.<br>해결책 대신 경청에 집중합니다.</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" style="margin-top: 16px;" onclick="startChat('empathy')">대화 시작하기</button>
+    </div>
+
+    <!-- 채팅 UI (대화 중) -->
+    <div id="chat-area" class="chat-container" style="display: none;">
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-area">
+        <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요..."
+          onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }">
+        <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">➤</button>
+      </div>
     </div>
   </div>
 
@@ -419,9 +473,15 @@
     <div class="divider"></div>
 
     <div class="modal-section">
-      <label class="modal-label">Claude API 키</label>
+      <label class="modal-label">Claude API 키 (주간 리포트·세션 준비)</label>
       <input type="password" id="api-key-input" placeholder="sk-ant-..." />
-      <div class="modal-hint">Anthropic Console에서 발급받은 API 키를 입력하면 AI 분석 기능이 활성화돼요. 키는 브라우저에만 저장됩니다.</div>
+      <div class="modal-hint">Anthropic Console에서 발급. 주간 리포트, 세션 브리핑에 사용돼요.</div>
+    </div>
+
+    <div class="modal-section">
+      <label class="modal-label">Gemini API 키 (AI 대화)</label>
+      <input type="password" id="gemini-key-input" placeholder="AIzaSy..." />
+      <div class="modal-hint">Google AI Studio에서 무료 발급. AI 대화 기능에 사용돼요.</div>
     </div>
 
     <div class="divider"></div>
@@ -475,6 +535,7 @@ const EMOTION_KEYWORDS  = ['힘들','불안','화가','슬프','기쁘','좋았'
 // 탭 정의: [id, 레이블, 모드('all'|'counseling')]
 const TABS = [
   ['record',    '오늘 기록',  'all'],
+  ['chat',      'AI 대화',    'all'],
   ['report',    '주간 리포트','all'],
   ['session',   '세션 준비',  'counseling'],
   ['actions',   '과제 관리',  'counseling'],
@@ -498,6 +559,7 @@ function saveSettings(s) { localStorage.setItem('mcSettings', JSON.stringify(s))
 
 function getMode() { return getSettings().mode || null; }
 function getApiKey() { return getSettings().apiKey || ''; }
+function getGeminiApiKey() { return getSettings().geminiApiKey || ''; }
 
 function todayStr() {
   const n = new Date();
@@ -591,6 +653,7 @@ function showPage(name, btn) {
   (btn || document.querySelector(`[data-page="${name}"]`))?.classList.add('active');
 
   if (name === 'record')  renderRecord();
+  if (name === 'chat')    renderChatPage();
   if (name === 'report')  renderReport();
   if (name === 'session') renderSessionBriefingPage();
   if (name === 'actions') renderActions();
@@ -892,6 +955,162 @@ function parseJson(text) {
     if (m) return JSON.parse(m[0]);
   } catch (e) {}
   return { rawText: text };
+}
+
+// ═══════════════════════════════════════════
+// Gemini API 호출 + AI 대화
+// ═══════════════════════════════════════════
+const EMPATHY_SYSTEM = `당신은 따뜻하고 공감적인 대화 상대입니다. 사용자의 감정을 있는 그대로 받아들이고 반영해주세요.
+해결책을 제시하지 마세요. "그랬구나", "힘들었겠다" 같은 경청과 공감에 집중하세요.
+사용자가 스스로 감정을 정리할 수 있도록 부드러운 질문을 가끔 던져주세요.
+짧고 자연스러운 대화체로 응답하세요. 3~4문장 이내.
+한국어로만 응답하세요.`;
+
+let chatHistory = [];
+let chatMode = null;
+
+async function callGemini(userMessage) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) throw new Error('GEMINI_KEY_MISSING');
+
+  // 대화 히스토리에 사용자 메시지 추가
+  chatHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+
+  // 최근 10턴만 유지
+  const recentHistory = chatHistory.slice(-20);
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: recentHistory,
+      systemInstruction: { parts: [{ text: EMPATHY_SYSTEM }] },
+      generationConfig: { temperature: 0.8, maxOutputTokens: 500 }
+    })
+  });
+
+  if (!res.ok) {
+    chatHistory.pop(); // 실패 시 롤백
+    if (res.status === 400) throw new Error('GEMINI_KEY_INVALID');
+    if (res.status === 429) throw new Error('RATE_LIMIT');
+    throw new Error('API_ERROR_' + res.status);
+  }
+
+  const json = await res.json();
+  const aiText = json.candidates?.[0]?.content?.parts?.[0]?.text || '응답을 받지 못했어요.';
+
+  // AI 응답을 히스토리에 추가
+  chatHistory.push({ role: 'model', parts: [{ text: aiText }] });
+
+  return aiText;
+}
+
+function startChat(mode) {
+  const geminiKey = getGeminiApiKey();
+  if (!geminiKey) {
+    showToast('설정에서 Gemini API 키를 입력해주세요');
+    openSettings();
+    return;
+  }
+
+  chatMode = mode;
+  chatHistory = [];
+  document.getElementById('chat-mode-select').style.display = 'none';
+  document.getElementById('chat-area').style.display = 'flex';
+  document.getElementById('chat-messages').innerHTML = '';
+
+  // 첫 AI 인사
+  appendChatBubble('ai', '안녕하세요. 오늘 하루 어떠셨어요? 편하게 이야기해주세요. 🌿');
+  document.getElementById('chat-input').focus();
+}
+
+function resetChat() {
+  chatMode = null;
+  chatHistory = [];
+  document.getElementById('chat-mode-select').style.display = 'block';
+  document.getElementById('chat-area').style.display = 'none';
+}
+
+function appendChatBubble(role, text) {
+  const container = document.getElementById('chat-messages');
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${role === 'user' ? 'user' : 'ai'}`;
+  bubble.textContent = text;
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTypingIndicator() {
+  const container = document.getElementById('chat-messages');
+  const typing = document.createElement('div');
+  typing.className = 'chat-bubble ai chat-typing';
+  typing.id = 'typing-indicator';
+  typing.innerHTML = '<div class="chat-typing-dot"></div><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div>';
+  container.appendChild(typing);
+  container.scrollTop = container.scrollHeight;
+}
+
+function hideTypingIndicator() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send-btn');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // UI 업데이트
+  input.value = '';
+  input.disabled = true;
+  sendBtn.disabled = true;
+  appendChatBubble('user', text);
+  showTypingIndicator();
+
+  try {
+    const response = await callGemini(text);
+    hideTypingIndicator();
+    appendChatBubble('ai', response);
+
+    // 오늘 대화 저장
+    saveChatToHistory(text, response);
+  } catch (err) {
+    hideTypingIndicator();
+    if (err.message === 'GEMINI_KEY_MISSING') {
+      appendChatBubble('ai', '설정에서 Gemini API 키를 먼저 입력해주세요.');
+    } else if (err.message === 'GEMINI_KEY_INVALID') {
+      appendChatBubble('ai', 'API 키가 올바르지 않은 것 같아요. 설정에서 확인해주세요.');
+    } else if (err.message === 'RATE_LIMIT') {
+      appendChatBubble('ai', '잠시 후 다시 시도해주세요. (요청 한도 초과)');
+    } else {
+      appendChatBubble('ai', '앗, 문제가 생겼어요. 다시 한번 말씀해주시겠어요?');
+      console.error('Chat error:', err);
+    }
+  } finally {
+    input.disabled = false;
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+function saveChatToHistory(userMsg, aiMsg) {
+  const data = getData();
+  const today = todayStr();
+  if (!data.chatLogs) data.chatLogs = {};
+  if (!data.chatLogs[today]) data.chatLogs[today] = [];
+  data.chatLogs[today].push(
+    { role: 'user', content: userMsg, mode: chatMode, time: new Date().toISOString() },
+    { role: 'ai', content: aiMsg, mode: chatMode, time: new Date().toISOString() }
+  );
+  saveData(data);
+}
+
+function renderChatPage() {
+  // 채팅 페이지 진입 시 초기화
+  if (!chatMode) {
+    resetChat();
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1257,6 +1476,8 @@ function openSettings() {
   const s = getSettings();
   const apiInput = document.getElementById('api-key-input');
   if (apiInput) apiInput.value = s.apiKey || '';
+  const geminiInput = document.getElementById('gemini-key-input');
+  if (geminiInput) geminiInput.value = s.geminiApiKey || '';
   const mode = s.mode || 'general';
   document.getElementById('mode-btn-general').classList.toggle('active', mode === 'general');
   document.getElementById('mode-btn-counseling').classList.toggle('active', mode === 'counseling');
@@ -1265,12 +1486,13 @@ function openSettings() {
 
 function closeSettings() {
   // API 키 저장
+  const s = getSettings();
   const apiInput = document.getElementById('api-key-input');
-  if (apiInput) {
-    const s = getSettings();
-    s.apiKey = apiInput.value.trim();
-    saveSettings(s);
-  }
+  if (apiInput) s.apiKey = apiInput.value.trim();
+  const geminiInput = document.getElementById('gemini-key-input');
+  if (geminiInput) s.geminiApiKey = geminiInput.value.trim();
+  saveSettings(s);
+
   document.getElementById('settings-modal').classList.remove('open');
   // 현재 탭 다시 렌더
   const activePage = document.querySelector('.page.active');
