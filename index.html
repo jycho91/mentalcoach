@@ -1528,6 +1528,193 @@ async function showRecordFeedback(text, emotions) {
   feedbackEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 정량 분석 엔진 (감정 단어 사전 + 표현 패턴)
+// ═══════════════════════════════════════════════════════════════
+
+// 감정 단어 사전 (부분 매칭용 - 어근 기반)
+const EMOTION_DICT = {
+  기쁨: ["행복", "즐겁", "뿌듯", "설레", "감사", "좋았", "신나", "만족", "기쁘", "흐뭇", "반갑", "상쾌", "기분 좋", "재밌", "재미있", "웃", "홀가분", "후련", "보람"],
+  슬픔: ["슬프", "우울", "외롭", "서운", "허전", "그립", "눈물", "쓸쓸", "막막", "서글", "허무", "공허", "쓸쓸", "비참", "참담", "애잔"],
+  분노: ["화나", "짜증", "억울", "답답", "열받", "분하", "빡치", "속상", "괘씸", "짜증나", "화가", "열 받", "성질", "어이없", "기가 막"],
+  불안: ["불안", "걱정", "두렵", "긴장", "조마조마", "초조", "무섭", "떨리", "겁나", "공포", "소름", "두근", "조급", "안절부절"],
+  평온: ["편안", "차분", "여유", "평화", "담담", "잔잔", "고요", "느긋", "평온", "안정", "침착", "여유롭", "한가"]
+};
+
+// 표현 패턴 사전
+const EXPRESSION_PATTERNS = {
+  극단어: ["항상", "절대", "매번", "절대로", "전혀", "언제나", "늘", "무조건", "항상", "완전", "진짜", "너무", "정말"],
+  의무어: ["해야", "해야지", "해야만", "해야 한다", "해야겠", "해야 돼", "해야해", "안 하면 안", "꼭 해야"],
+  전환어: ["근데", "그래도", "하지만", "그런데도", "그렇지만", "다만", "그러나", "오히려", "대신"],
+  자기비하: ["나는 못", "난 못", "항상 이런 식", "역시 안 돼", "나는 왜", "난 왜", "내가 못나서", "내가 부족", "나 때문에", "내 탓", "내가 잘못"],
+  타인귀인: ["덕분에", "해줘서", "도와줘서", "덕에", "해주셔서", "가 해줘", "이 도와"],
+  감정회피: ["괜찮아", "별거 아니", "그냥", "뭐 어때", "신경 안 써", "아무렇지", "별일 아니", "그럴 수도"]
+};
+
+// 감정 분석 함수 (정량 엔진)
+function analyzeEmotionsAdvanced(text) {
+  const matches = { 기쁨: [], 슬픔: [], 분노: [], 불안: [], 평온: [] };
+  const counts = { 기쁨: 0, 슬픔: 0, 분노: 0, 불안: 0, 평온: 0 };
+  const allMatched = [];
+
+  // 각 카테고리별로 매칭
+  for (const [category, words] of Object.entries(EMOTION_DICT)) {
+    for (const word of words) {
+      const regex = new RegExp(word, 'g');
+      const found = text.match(regex);
+      if (found) {
+        matches[category].push(...found.map(() => word));
+        counts[category] += found.length;
+        allMatched.push(...found.map(() => word));
+      }
+    }
+  }
+
+  // 고유 감정 단어 수 (중복 제거)
+  const uniqueWords = [...new Set(allMatched)];
+  const uniqueCount = uniqueWords.length;
+  const totalCount = allMatched.length;
+
+  // 다양성 비율 (1에 가까울수록 다양)
+  const diversityRatio = totalCount > 0 ? Math.round((uniqueCount / totalCount) * 100) / 100 : 0;
+
+  // 우세 카테고리
+  let dominantCategory = '없음';
+  let maxCount = 0;
+  for (const [cat, count] of Object.entries(counts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      dominantCategory = cat;
+    }
+  }
+
+  // 카테고리별 비율
+  const categoryRatio = {};
+  for (const [cat, count] of Object.entries(counts)) {
+    categoryRatio[cat] = totalCount > 0 ? Math.round((count / totalCount) * 100) / 100 : 0;
+  }
+
+  return {
+    matches,
+    counts,
+    uniqueCount,
+    totalCount,
+    diversityRatio,
+    dominantCategory: maxCount > 0 ? dominantCategory : '없음',
+    categoryRatio,
+    uniqueWords
+  };
+}
+
+// 표현 패턴 분석 함수
+function analyzeExpressionPatterns(text) {
+  const result = {};
+
+  for (const [pattern, words] of Object.entries(EXPRESSION_PATTERNS)) {
+    const matches = [];
+    let count = 0;
+
+    for (const word of words) {
+      const regex = new RegExp(word, 'g');
+      const found = text.match(regex);
+      if (found) {
+        matches.push(...found);
+        count += found.length;
+      }
+    }
+
+    result[pattern] = { count, matches };
+  }
+
+  return result;
+}
+
+// 텍스트 통계 분석 함수
+function analyzeTextStats(text) {
+  // 문장 분리 (마침표, 물음표, 느낌표 기준)
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const sentenceCount = sentences.length || 1;
+
+  // 글자 수 (공백 제외)
+  const charCount = text.replace(/\s/g, '').length;
+
+  // 단어 수 (띄어쓰기 기준)
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  const wordCount = words.length;
+
+  // 평균 문장 길이
+  const avgSentenceLength = Math.round(charCount / sentenceCount);
+
+  return {
+    charCount,
+    sentenceCount,
+    avgSentenceLength,
+    wordCount
+  };
+}
+
+// 기분/에너지 점수 계산 함수
+function calculateMoodEnergy(emotionResult, textStats) {
+  const { counts, totalCount } = emotionResult;
+
+  // 기분 점수: (긍정 - 부정) / 전체
+  // 긍정: 기쁨, 평온 / 부정: 슬픔, 분노, 불안
+  const positive = counts.기쁨 + counts.평온;
+  const negative = counts.슬픔 + counts.분노 + counts.불안;
+
+  let mood = 0;
+  if (totalCount > 0) {
+    mood = Math.round(((positive - negative) / totalCount) * 100) / 100;
+    mood = Math.max(-1, Math.min(1, mood)); // -1 ~ 1 범위로 제한
+  }
+
+  // 에너지 점수: 문장 길이 + 감탄사 빈도 기반
+  // 긴 문장 + 강한 감정 = 높은 에너지
+  const highEnergyEmotions = counts.기쁨 + counts.분노 + counts.불안;
+  const lowEnergyEmotions = counts.슬픔 + counts.평온;
+
+  let energy = 0;
+  if (totalCount > 0) {
+    // 에너지 높은 감정 비율
+    const energyRatio = (highEnergyEmotions - lowEnergyEmotions) / totalCount;
+
+    // 문장 길이 보정 (평균 30자 기준)
+    const lengthFactor = Math.min(textStats.avgSentenceLength / 30, 1.5) - 0.5;
+
+    energy = Math.round((energyRatio * 0.7 + lengthFactor * 0.3) * 100) / 100;
+    energy = Math.max(-1, Math.min(1, energy)); // -1 ~ 1 범위로 제한
+  }
+
+  // 사분면 판단
+  let quadrant = '';
+  if (mood >= 0 && energy >= 0) quadrant = '활기/열정';
+  else if (mood >= 0 && energy < 0) quadrant = '평온/만족';
+  else if (mood < 0 && energy >= 0) quadrant = '흥분/스트레스';
+  else quadrant = '무기력/우울';
+
+  return { mood, energy, quadrant };
+}
+
+// 종합 분석 함수 (한 번에 모든 분석 실행)
+function runFullAnalysis(text) {
+  const emotions = analyzeEmotionsAdvanced(text);
+  const patterns = analyzeExpressionPatterns(text);
+  const stats = analyzeTextStats(text);
+  const moodEnergy = calculateMoodEnergy(emotions, stats);
+
+  return {
+    emotions,
+    patterns,
+    stats,
+    moodEnergy,
+    timestamp: Date.now()
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 기존 감정 추출 함수 (하위 호환용)
+// ═══════════════════════════════════════════════════════════════
+
 function extractEmotions(text) {
   const emotionKeywords = {
     '기쁨': ['기쁘', '좋았', '행복', '즐거', '신나'],
