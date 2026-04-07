@@ -1896,6 +1896,95 @@ function runFullAnalysis(text) {
   };
 }
 
+// 주간별 분석 함수
+function analyzeByWeek(records, weeksAgo = 0) {
+  const dates = Object.keys(records).sort();
+  const totalDays = dates.length;
+
+  let weekDates;
+  if (weeksAgo === 0) {
+    weekDates = dates.slice(-7);
+  } else {
+    const endIndex = totalDays - (7 * weeksAgo);
+    const startIndex = Math.max(0, endIndex - 7);
+    weekDates = dates.slice(startIndex, endIndex);
+  }
+
+  if (weekDates.length === 0) return null;
+
+  const weekText = weekDates.map(d => records[d].text).join('\n');
+  return runFullAnalysis(weekText);
+}
+
+// 감정 분포 바 렌더링
+function renderEmotionDistribution(categoryRatio) {
+  const colors = {
+    기쁨: 'var(--success)',
+    슬픔: '#6b7280',
+    분노: 'var(--rose)',
+    불안: 'var(--warn)',
+    평온: 'var(--primary)'
+  };
+
+  return Object.entries(categoryRatio)
+    .filter(([_, ratio]) => ratio > 0)
+    .map(([cat, ratio]) => {
+      const percent = Math.round(ratio * 100);
+      return `
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <span style="width: 36px; font-size: 12px;">${cat}</span>
+          <div style="flex: 1; height: 16px; background: var(--border); border-radius: 8px; overflow: hidden;">
+            <div style="width: ${percent}%; height: 100%; background: ${colors[cat]}; border-radius: 8px;"></div>
+          </div>
+          <span style="width: 36px; font-size: 12px; text-align: right;">${percent}%</span>
+        </div>
+      `;
+    }).join('');
+}
+
+// 번아웃 단계 계산 (기획안 v4 기반)
+function calculateBurnoutStage(analysis, lastWeekAnalysis) {
+  let score = 0;
+
+  // 1. 에너지 점수 기반
+  if (analysis.moodEnergy.energy < -0.5) score += 2;
+  else if (analysis.moodEnergy.energy < 0) score += 1;
+
+  // 2. 기분 점수 기반
+  if (analysis.moodEnergy.mood < -0.5) score += 2;
+  else if (analysis.moodEnergy.mood < 0) score += 1;
+
+  // 3. 극단어 빈도
+  if (analysis.patterns.극단어.count > 10) score += 2;
+  else if (analysis.patterns.극단어.count > 5) score += 1;
+
+  // 4. 자기비하 표현
+  if (analysis.patterns.자기비하.count > 5) score += 2;
+  else if (analysis.patterns.자기비하.count > 2) score += 1;
+
+  // 5. 감정 회피
+  if (analysis.patterns.감정회피.count > 5) score += 1;
+
+  // 6. 주간 변화 (악화 추세)
+  if (lastWeekAnalysis) {
+    if (analysis.moodEnergy.energy < lastWeekAnalysis.moodEnergy.energy - 0.2) score += 1;
+    if (analysis.patterns.극단어.count > lastWeekAnalysis.patterns.극단어.count * 1.3) score += 1;
+  }
+
+  // 점수를 5단계로 변환
+  if (score >= 10) return { stage: 5, name: '탈진기' };
+  if (score >= 7) return { stage: 4, name: '번아웃 진입기' };
+  if (score >= 5) return { stage: 3, name: '만성 피로기' };
+  if (score >= 3) return { stage: 2, name: '스트레스 축적기' };
+  return { stage: 1, name: '열정기' };
+}
+
+// 변화율 계산 헬퍼
+function calcChangeRate(current, previous) {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // 기존 감정 추출 함수 (하위 호환용)
 // ═══════════════════════════════════════════════════════════════
@@ -2025,45 +2114,81 @@ function renderLv1Profile(profile) {
 
 function renderLv2Expression(data) {
   const records = data.records || {};
-  const texts = Object.values(records).map(r => r.text).join(' ');
+  const allText = Object.values(records).map(r => r.text).join('\n');
 
-  // 표현 빈도 계산
-  const expressions = {
-    '항상': (texts.match(/항상/g) || []).length,
-    '또': (texts.match(/또/g) || []).length,
-    '어차피': (texts.match(/어차피/g) || []).length,
-    '절대': (texts.match(/절대/g) || []).length,
-    '맨날': (texts.match(/맨날/g) || []).length
-  };
+  // 정량 분석 엔진 사용
+  const analysis = runFullAnalysis(allText);
+  const { emotions, patterns } = analysis;
 
-  // 감정 어휘 수집
-  const allEmotions = Object.values(records).flatMap(r => r.emotions || []);
-  const emotionCounts = {};
-  allEmotions.forEach(e => { emotionCounts[e] = (emotionCounts[e] || 0) + 1; });
-  const uniqueEmotions = Object.keys(emotionCounts);
+  // 감정 어휘력
+  const diversityPercent = Math.round(emotions.diversityRatio * 100);
 
-  const expressionHtml = Object.entries(expressions)
-    .filter(([_, count]) => count > 0)
-    .map(([word, count]) => `<span class="expression-item">"${word}" <span class="expression-count">${count}회</span></span>`)
-    .join('') || '<span style="color: var(--text-muted); font-size: 13px;">아직 특별한 패턴이 없어요</span>';
+  // 표현 패턴 HTML
+  const patternItems = [
+    { name: '극단어', data: patterns.극단어, desc: '유연한 표현 연습해보기', color: 'var(--rose)' },
+    { name: '의무어', data: patterns.의무어, desc: '자기 압박 경향', color: 'var(--warn)' },
+    { name: '전환어', data: patterns.전환어, desc: '관점 전환 시도 중! (좋은 신호)', color: 'var(--success)', positive: true },
+    { name: '자기비하', data: patterns.자기비하, desc: '자책 패턴', color: 'var(--rose)' },
+    { name: '감정회피', data: patterns.감정회피, desc: '감정 억제 경향', color: '#6b7280' }
+  ];
 
-  const emotionHtml = uniqueEmotions
-    .map(e => `<span class="emotion-word">${e} (${emotionCounts[e]})</span>`)
-    .join('') || '<span style="color: var(--text-muted); font-size: 13px;">감정 기록을 더 쌓아보세요</span>';
+  const patternHtml = patternItems
+    .filter(p => p.data.count > 0)
+    .map(p => `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border);">
+        <div>
+          <span style="font-weight: 600; color: ${p.positive ? 'var(--success)' : 'var(--text)'};">${p.name}</span>
+          <span style="font-size: 12px; color: var(--text-muted); margin-left: 6px;">${p.data.matches.slice(0, 3).join(', ')}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-weight: 700; color: ${p.color};">${p.data.count}회</span>
+        </div>
+      </div>
+    `).join('') || '<div style="color: var(--text-muted); font-size: 13px; padding: 10px 0;">아직 특별한 패턴이 없어요</div>';
+
+  // 감정 분포 HTML
+  const distributionHtml = renderEmotionDistribution(emotions.categoryRatio);
+
+  // 인사이트 메시지
+  let insight = '감정을 더 구체적으로 표현해보면 자기 이해가 깊어져요!';
+  if (patterns.전환어.count > 2) {
+    insight = '"그래도", "하지만" 같은 전환어를 잘 사용하고 있어요! 관점 전환 능력이 좋아요.';
+  } else if (patterns.극단어.count > 5) {
+    insight = '"항상", "절대" 같은 표현이 많아요. "이번에는", "가끔은"으로 바꿔보면 어떨까요?';
+  } else if (patterns.의무어.count > 5) {
+    insight = '"해야 한다"는 표현이 많아요. 스스로에게 조금 여유를 줘도 괜찮아요.';
+  }
 
   return `
     <div class="card">
       <div class="report-section-title">
         <span class="level-badge lv2">Lv.2</span> 표현 분석
       </div>
+
       <div class="report-section">
-        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">&#128172; 자주 쓰는 표현</div>
-        <div style="margin-bottom: 16px;">${expressionHtml}</div>
-        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">&#128221; 감정 어휘력: ${uniqueEmotions.length}단어</div>
-        <div>${emotionHtml}</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">&#128221; 감정 어휘력</div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px;">
+          <span style="font-size: 28px; font-weight: 800; color: var(--primary);">${emotions.uniqueCount}</span>
+          <span style="font-size: 14px; color: var(--text-muted);">단어</span>
+          <span style="font-size: 12px; color: var(--text-muted);">(다양성 ${diversityPercent}%)</span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+          ${emotions.uniqueWords.slice(0, 8).map(w => `<span class="emotion-word">${w}</span>`).join(' ')}
+        </div>
       </div>
+
+      <div class="report-section">
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">&#128172; 표현 패턴 분석</div>
+        ${patternHtml}
+      </div>
+
+      <div class="report-section" style="margin-top: 16px;">
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">&#128522; 감정 분포</div>
+        ${distributionHtml || '<div style="color: var(--text-muted); font-size: 13px;">감정 기록을 더 쌓아보세요</div>'}
+      </div>
+
       <div class="insight-card">
-        &#128161; 감정을 더 구체적으로 표현해보면 자기 이해가 깊어져요!
+        &#128161; ${insight}
       </div>
     </div>
   `;
@@ -2073,40 +2198,89 @@ function renderLv3Weekly(data) {
   const records = data.records || {};
   const dates = Object.keys(records).sort().slice(-7);
 
-  // 주간 요약 생성
-  const weekTexts = dates.map(d => records[d].text).join(' ');
-  const weekEmotions = dates.flatMap(d => records[d].emotions || []);
+  // 이번 주 분석
+  const thisWeek = analyzeByWeek(records, 0);
+  const lastWeek = analyzeByWeek(records, 1);
 
-  const negativeCount = weekEmotions.filter(e => ['피곤', '스트레스', '불안', '우울', '짜증', '자책'].includes(e)).length;
-  const positiveCount = weekEmotions.filter(e => ['기쁨', '뿌듯', '평온', '감사'].includes(e)).length;
+  if (!thisWeek) {
+    return `<div class="card"><div style="color: var(--text-muted); text-align: center; padding: 20px;">기록이 부족해요</div></div>`;
+  }
+
+  const { moodEnergy, emotions, patterns } = thisWeek;
+
+  // 기분/에너지 점수 표시
+  const moodLabel = moodEnergy.mood > 0.3 ? '좋음' : moodEnergy.mood > -0.3 ? '보통' : '낮음';
+  const energyLabel = moodEnergy.energy > 0.3 ? '높음' : moodEnergy.energy > -0.3 ? '보통' : '낮음';
+
+  // 지난 주 대비 변화
+  let vocabChange = '';
+  if (lastWeek) {
+    const diff = thisWeek.emotions.uniqueCount - lastWeek.emotions.uniqueCount;
+    if (diff > 0) vocabChange = `<span style="color: var(--success);">↑${diff}</span>`;
+    else if (diff < 0) vocabChange = `<span style="color: var(--rose);">↓${Math.abs(diff)}</span>`;
+  }
+
+  // 긍정 포인트 찾기
+  let positivePoint = '다음 주도 기록하면 변화를 비교해드릴게요!';
+  if (patterns.전환어.count > lastWeek?.patterns.전환어.count) {
+    positivePoint = '전환어 사용이 늘었어요! 힘든 상황에서도 다른 관점을 찾으려는 시도가 보여요.';
+  } else if (thisWeek.emotions.uniqueCount > (lastWeek?.emotions.uniqueCount || 0)) {
+    positivePoint = '감정 어휘가 늘었어요! 감정을 더 세밀하게 인식하고 있어요.';
+  } else if (moodEnergy.mood > (lastWeek?.moodEnergy.mood || 0)) {
+    positivePoint = '기분 점수가 올랐어요! 좋은 방향으로 가고 있어요.';
+  }
 
   return `
     <div class="card">
       <div class="report-section-title">
         <span class="level-badge lv3">Lv.3</span> 주간 리포트
       </div>
+
       <div class="stat-grid">
         <div class="stat-box">
           <div class="stat-number">${dates.length}</div>
           <div class="stat-label">기록 일수</div>
         </div>
         <div class="stat-box">
-          <div class="stat-number" style="color: var(--success);">${positiveCount}</div>
-          <div class="stat-label">긍정 감정</div>
+          <div class="stat-number" style="color: var(--primary);">${emotions.uniqueCount} ${vocabChange}</div>
+          <div class="stat-label">감정 어휘</div>
         </div>
         <div class="stat-box">
-          <div class="stat-number" style="color: var(--rose);">${negativeCount}</div>
-          <div class="stat-label">부정 감정</div>
+          <div class="stat-number" style="color: ${moodEnergy.mood >= 0 ? 'var(--success)' : 'var(--rose)'};">${moodEnergy.mood > 0 ? '+' : ''}${moodEnergy.mood.toFixed(1)}</div>
+          <div class="stat-label">기분 점수</div>
         </div>
       </div>
+
       <div class="report-section">
-        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">&#127760; 감정 에너지 맵</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">&#127760; 에너지 맵 위치</div>
+        <div style="background: var(--bg); border-radius: 10px; padding: 16px; position: relative; height: 160px;">
+          <!-- 4사분면 배경 -->
+          <div style="position: absolute; inset: 16px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px;">
+            <div style="background: rgba(248, 113, 113, 0.1); border-radius: 8px 0 0 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted);">흥분/스트레스</div>
+            <div style="background: rgba(74, 222, 128, 0.1); border-radius: 0 8px 0 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted);">활기/열정</div>
+            <div style="background: rgba(148, 163, 184, 0.1); border-radius: 0 0 0 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted);">무기력/우울</div>
+            <div style="background: rgba(124, 111, 205, 0.1); border-radius: 0 0 8px 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted);">평온/만족</div>
+          </div>
+          <!-- 현재 위치 점 -->
+          <div style="position: absolute; left: calc(50% + ${moodEnergy.mood * 40}%); top: calc(50% - ${moodEnergy.energy * 40}%); transform: translate(-50%, -50%); z-index: 10;">
+            <div style="width: 20px; height: 20px; background: var(--primary); border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2);"></div>
+          </div>
+        </div>
+        <div style="text-align: center; margin-top: 10px; font-size: 13px;">
+          현재 위치: <strong style="color: var(--primary);">${moodEnergy.quadrant}</strong>
+          <span style="color: var(--text-muted);">(기분 ${moodLabel}, 에너지 ${energyLabel})</span>
+        </div>
+      </div>
+
+      <div class="report-section">
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">&#128200; 주간 차트</div>
         <div class="chart-container">
           <canvas id="emotion-chart"></canvas>
         </div>
       </div>
+
       <div class="insight-card">
-        &#128161; 다음 주도 기록하면 변화를 비교해드릴게요!
+        &#127793; ${positivePoint}
       </div>
     </div>
   `;
@@ -2114,23 +2288,76 @@ function renderLv3Weekly(data) {
 
 function renderLv4Deep(data) {
   const records = data.records || {};
-  const allDates = Object.keys(records).sort();
 
-  // 이번 주 vs 지난 주 비교
-  const thisWeek = allDates.slice(-7);
-  const lastWeek = allDates.slice(-14, -7);
+  // 이번 주 vs 지난 주 분석
+  const thisWeek = analyzeByWeek(records, 0);
+  const lastWeek = analyzeByWeek(records, 1);
 
-  const thisWeekTexts = thisWeek.map(d => records[d].text).join(' ');
-  const lastWeekTexts = lastWeek.map(d => records[d].text).join(' ');
+  if (!thisWeek) {
+    return `<div class="card"><div style="color: var(--text-muted); text-align: center; padding: 20px;">기록이 부족해요</div></div>`;
+  }
 
-  // 자책 표현 변화
-  const thisNegative = (thisWeekTexts.match(/항상|또|어차피|절대|맨날|못/g) || []).length;
-  const lastNegative = (lastWeekTexts.match(/항상|또|어차피|절대|맨날|못/g) || []).length;
+  // 번아웃 단계 계산
+  const burnout = calculateBurnoutStage(thisWeek, lastWeek);
 
-  const changeDirection = thisNegative > lastNegative ? '증가' : thisNegative < lastNegative ? '감소' : '유지';
+  // 주간 비교 데이터
+  const changes = [];
+  if (lastWeek) {
+    const items = [
+      { name: '극단어', curr: thisWeek.patterns.극단어.count, prev: lastWeek.patterns.극단어.count, bad: true },
+      { name: '의무어', curr: thisWeek.patterns.의무어.count, prev: lastWeek.patterns.의무어.count, bad: true },
+      { name: '전환어', curr: thisWeek.patterns.전환어.count, prev: lastWeek.patterns.전환어.count, good: true },
+      { name: '자기비하', curr: thisWeek.patterns.자기비하.count, prev: lastWeek.patterns.자기비하.count, bad: true },
+      { name: '감정 어휘', curr: thisWeek.emotions.uniqueCount, prev: lastWeek.emotions.uniqueCount, good: true }
+    ];
 
-  // 번아웃 단계 추정
-  const burnoutLevel = estimateBurnout(data);
+    items.forEach(item => {
+      const rate = calcChangeRate(item.curr, item.prev);
+      const increased = item.curr > item.prev;
+      const isWarning = (item.bad && increased) || (item.good && !increased && item.curr !== item.prev);
+      changes.push({ ...item, rate, increased, isWarning });
+    });
+  }
+
+  // 감지된 표현 습관
+  const habits = [];
+  if (thisWeek.patterns.자기비하.count > 0) {
+    habits.push({ name: '자기비하 표현', count: thisWeek.patterns.자기비하.count, examples: thisWeek.patterns.자기비하.matches.slice(0, 2) });
+  }
+  if (thisWeek.patterns.감정회피.count > 0) {
+    habits.push({ name: '감정회피 표현', count: thisWeek.patterns.감정회피.count, examples: thisWeek.patterns.감정회피.matches.slice(0, 2) });
+  }
+  if (thisWeek.patterns.극단어.count > 5) {
+    habits.push({ name: '극단적 표현', count: thisWeek.patterns.극단어.count, examples: thisWeek.patterns.극단어.matches.slice(0, 2) });
+  }
+
+  // 맞춤 제안 생성
+  const suggestions = [];
+  if (thisWeek.patterns.극단어.count > 3) {
+    suggestions.push('"항상", "절대"가 나올 때 → "이번에는", "가끔은"으로 바꿔보기');
+  }
+  if (thisWeek.patterns.의무어.count > 3) {
+    suggestions.push('"해야 한다"를 "하고 싶다"로 바꿔서 말해보기');
+  }
+  if (thisWeek.patterns.자기비하.count > 0) {
+    suggestions.push('하루 끝에 "오늘 잘한 것 하나" 적어보기');
+  }
+  if (suggestions.length < 3) {
+    suggestions.push('AI 대화 코칭 모드에서 리프레이밍 연습하기');
+  }
+
+  // 변화 카드 HTML
+  const changesHtml = changes.length > 0 ? changes.map(c => {
+    const arrow = c.curr > c.prev ? '↑' : c.curr < c.prev ? '↓' : '→';
+    const color = c.isWarning ? 'var(--rose)' : c.good && c.increased ? 'var(--success)' : 'var(--text)';
+    const rateText = c.rate !== 0 ? ` (${c.rate > 0 ? '+' : ''}${c.rate}%)` : '';
+    return `
+      <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border);">
+        <span>${c.name}</span>
+        <span style="color: ${color}; font-weight: 600;">${c.prev} → ${c.curr} ${arrow}${rateText}</span>
+      </div>
+    `;
+  }).join('') : '<div style="color: var(--text-muted);">지난 주 데이터가 없어요</div>';
 
   return `
     <div class="card">
@@ -2139,53 +2366,115 @@ function renderLv4Deep(data) {
       </div>
 
       <div class="change-card">
-        <div class="change-card-label">&#128260; 변화 카드</div>
-        <div class="change-quote">지난 주 대비 부정적 표현이 <strong>${changeDirection}</strong>했어요.</div>
-        <div class="change-arrow">→ ${changeDirection === '증가' ? '최근 힘든 일이 있었을 수 있어요. 스스로에게 친절하게 대해주세요.' : changeDirection === '감소' ? '좋은 방향으로 변화하고 있어요!' : '안정적인 상태를 유지하고 있어요.'}</div>
+        <div class="change-card-label">&#128260; 주간 변화 비교</div>
+        <div style="margin-top: 8px;">
+          ${changesHtml}
+        </div>
       </div>
 
-      <div class="report-section">
+      ${habits.length > 0 ? `
+      <div class="report-section" style="margin-top: 16px;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px;">&#129504; 감지된 표현 습관</div>
+        ${habits.map(h => `
+          <div style="background: var(--bg); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px;">
+            <div style="font-size: 14px; font-weight: 600;">${h.name} <span style="color: var(--rose);">${h.count}회</span></div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">"${h.examples.join('", "')}"</div>
+          </div>
+        `).join('')}
+      </div>
+      ` : ''}
+
+      <div class="report-section" style="margin-top: 16px;">
         <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px;">&#128293; 번아웃 체크</div>
-        <div style="font-size: 14px; margin-bottom: 12px;">현재 추정 단계: <strong style="color: var(--primary);">${burnoutLevel.stage}단계 (${burnoutLevel.name})</strong></div>
+        <div style="font-size: 14px; margin-bottom: 12px;">
+          현재 추정: <strong style="color: ${burnout.stage >= 4 ? 'var(--rose)' : burnout.stage >= 3 ? 'var(--warn)' : 'var(--primary)'};">${burnout.stage}단계 (${burnout.name})</strong>
+        </div>
         <div class="burnout-meter">
           ${[1,2,3,4,5].map(i => `
             <div class="burnout-stage">
               <span style="width: 24px;">${i}</span>
-              <span style="width: 80px; font-size: 12px;">${['열정기','축적기','만성 스트레스','번아웃','탈진'][i-1]}</span>
+              <span style="width: 80px; font-size: 12px;">${['열정기','축적기','만성 피로','번아웃','탈진'][i-1]}</span>
               <div class="burnout-bar">
-                <div class="burnout-fill ${i <= 2 ? 'low' : i <= 3 ? 'mid' : 'high'}" style="width: ${i <= burnoutLevel.stage ? '100%' : '0'}"></div>
+                <div class="burnout-fill ${i <= 2 ? 'low' : i <= 3 ? 'mid' : 'high'}" style="width: ${i <= burnout.stage ? '100%' : '0'}"></div>
               </div>
-              ${i === burnoutLevel.stage ? '<span class="burnout-current">← 현재</span>' : ''}
+              ${i === burnout.stage ? '<span class="burnout-current">← 현재</span>' : ''}
             </div>
           `).join('')}
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 10px;">
+          ${burnout.stage <= 2 ? '지금은 괜찮아요. 현재 상태를 유지해보세요!' : burnout.stage === 3 ? '스트레스가 쌓이고 있어요. 지금이 관리하기 좋은 타이밍!' : '많이 지쳐있어요. 충분한 휴식이 필요해요.'}
         </div>
       </div>
 
       <div class="suggestion-card">
-        <div style="font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 10px;">&#128161; 이번 주 해볼 만한 것</div>
-        <div class="suggestion-item"><span class="suggestion-num">1</span><span>"또"라는 말이 나올 때 → "이번에는"으로 바꿔보기</span></div>
-        <div class="suggestion-item"><span class="suggestion-num">2</span><span>AI 대화 코칭 모드에서 리프레이밍 연습</span></div>
-        <div class="suggestion-item"><span class="suggestion-num">3</span><span>하루 끝에 "오늘 잘한 것 하나" 적어보기</span></div>
+        <div style="font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 10px;">&#128161; 맞춤 제안</div>
+        ${suggestions.slice(0, 3).map((s, i) => `
+          <div class="suggestion-item"><span class="suggestion-num">${i + 1}</span><span>${s}</span></div>
+        `).join('')}
       </div>
     </div>
   `;
 }
 
 function renderLv5Analysis(data) {
-  const profile = data.surveyResult?.profile || {};
+  const profile = data.surveyResult || {};
   const records = data.records || {};
   const recordDays = Object.keys(records).length;
   const chatCount = Object.keys(data.chatLogs || {}).length;
 
-  // 전체 텍스트 분석
-  const allTexts = Object.values(records).map(r => r.text).join(' ');
-  const allEmotions = Object.values(records).flatMap(r => r.emotions || []);
-  const uniqueEmotions = [...new Set(allEmotions)];
+  // 전체 분석
+  const allText = Object.values(records).map(r => r.text).join('\n');
+  const fullAnalysis = runFullAnalysis(allText);
 
-  // 사고 패턴 분석
-  const selfBlame = (allTexts.match(/나는 항상|또 망했|나는 왜|맨날 이래/g) || []).length;
-  const futureAnxiety = (allTexts.match(/이러다|망할 것|잘릴 것|어떡해/g) || []).length;
-  const comparison = (allTexts.match(/다른 사람|남들은|나만/g) || []).length;
+  // 주차별 분석 (3주)
+  const week1 = analyzeByWeek(records, 2);
+  const week2 = analyzeByWeek(records, 1);
+  const week3 = analyzeByWeek(records, 0);
+
+  // 사고 패턴 Top 3 (정량 기반)
+  const patternRanking = [
+    { name: '당위 진술', count: fullAnalysis.patterns.의무어.count, desc: '"~해야 한다"는 생각이 자주 나타나요' },
+    { name: '극단적 사고', count: fullAnalysis.patterns.극단어.count, desc: '"항상", "절대" 같은 흑백 사고 경향' },
+    { name: '자기비하', count: fullAnalysis.patterns.자기비하.count, desc: '단발 사건을 자기 전체로 확장' },
+    { name: '감정회피', count: fullAnalysis.patterns.감정회피.count, desc: '감정을 "괜찮아"로 넘기는 경향' },
+    { name: '타인귀인', count: fullAnalysis.patterns.타인귀인.count, desc: '성공을 외부 요인으로 돌림' }
+  ].filter(p => p.count > 0).sort((a, b) => b.count - a.count).slice(0, 3);
+
+  // 3주 변화 추이
+  const weeklyTrend = [];
+  if (week1) weeklyTrend.push({ week: '1주차', ...week1.moodEnergy, vocab: week1.emotions.uniqueCount });
+  if (week2) weeklyTrend.push({ week: '2주차', ...week2.moodEnergy, vocab: week2.emotions.uniqueCount });
+  if (week3) weeklyTrend.push({ week: '3주차', ...week3.moodEnergy, vocab: week3.emotions.uniqueCount });
+
+  // 초기 프로필과 비교
+  const profileComparison = [];
+  if (profile.stressResponse === '일단 피하고 본다' && fullAnalysis.patterns.감정회피.count > 3) {
+    profileComparison.push({ survey: '스트레스 대처: 회피형', actual: '실제로 감정회피 표현이 많아요', match: true });
+  }
+  if (profile.weakness && profile.weakness.includes('자기비판') && fullAnalysis.patterns.자기비하.count > 2) {
+    profileComparison.push({ survey: `약점: ${profile.weakness}`, actual: '실제 기록에서도 자기비하 패턴 확인', match: true });
+  }
+  if (profileComparison.length === 0) {
+    profileComparison.push({ survey: profile.weakness || '미설정', actual: '기록과 비교 분석 중', match: false });
+  }
+
+  // 번아웃 추이
+  const burnoutTrend = [];
+  if (week1) burnoutTrend.push(calculateBurnoutStage(week1, null).stage);
+  if (week2) burnoutTrend.push(calculateBurnoutStage(week2, week1).stage);
+  if (week3) burnoutTrend.push(calculateBurnoutStage(week3, week2).stage);
+
+  const currentBurnout = week3 ? calculateBurnoutStage(week3, week2) : { stage: 1, name: '열정기' };
+
+  // 종합 제안
+  let mainInsight = '당신의 감정 패턴을 3주간 분석했어요.';
+  if (fullAnalysis.patterns.의무어.count > 10) {
+    mainInsight = '높은 기준을 가진 분이에요. "해야 한다"를 "하고 싶다"로 바꿔보는 연습을 추천해요.';
+  } else if (fullAnalysis.patterns.자기비하.count > 5) {
+    mainInsight = '스스로에게 엄격한 편이에요. 오늘 잘한 일 하나를 인정해주는 연습을 해보세요.';
+  } else if (fullAnalysis.emotions.diversityRatio > 0.7) {
+    mainInsight = '감정을 다양하게 인식하고 있어요! 이건 큰 강점이에요.';
+  }
 
   return `
     <div class="card" style="background: linear-gradient(135deg, var(--primary-light) 0%, var(--rose-light) 100%);">
@@ -2199,48 +2488,91 @@ function renderLv5Analysis(data) {
       </div>
 
       <div style="background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px;">
-        <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px;">&#129504; 사고 패턴 심층 분석</div>
-
-        <div style="margin-bottom: 12px;">
-          <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">1. 자기비하 패턴 (빈도: ${selfBlame > 5 ? '높음' : selfBlame > 2 ? '중간' : '낮음'})</div>
-          <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">단발 사건을 자기 전체로 확장하는 경향이 있어요.</div>
-        </div>
-
-        <div style="margin-bottom: 12px;">
-          <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">2. 미래 불안 패턴 (빈도: ${futureAnxiety > 3 ? '높음' : futureAnxiety > 1 ? '중간' : '낮음'})</div>
-          <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">현재 상황을 최악의 결과로 확대하는 경향이 있어요.</div>
-        </div>
-
-        <div>
-          <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">3. 비교/열등감 (빈도: ${comparison > 2 ? '높음' : comparison > 0 ? '중간' : '낮음'})</div>
-          <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">타인과 비교하며 자신을 낮추는 경향이 있어요.</div>
-        </div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px;">&#129504; 사고 패턴 심층 분석 (Top 3)</div>
+        ${patternRanking.length > 0 ? patternRanking.map((p, i) => `
+          <div style="margin-bottom: 12px; ${i < patternRanking.length - 1 ? 'border-bottom: 1px solid var(--border); padding-bottom: 12px;' : ''}">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; font-weight: 600;">${i + 1}. ${p.name}</span>
+              <span style="font-size: 14px; font-weight: 700; color: var(--primary);">${p.count}회</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${p.desc}</div>
+          </div>
+        `).join('') : '<div style="color: var(--text-muted);">특별한 패턴이 감지되지 않았어요</div>'}
       </div>
 
       <div style="background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px;">
-        <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px;">&#128200; 감정 어휘력 성장</div>
-        <div style="font-size: 24px; font-weight: 800; color: var(--primary);">${uniqueEmotions.length}단어</div>
-        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">감정을 점점 더 세밀하게 표현하고 있어요!</div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px;">&#128200; 3주 변화 추이</div>
+        ${weeklyTrend.length > 0 ? `
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            ${weeklyTrend.map(w => `
+              <div style="flex: 1; background: var(--bg); padding: 10px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 11px; color: var(--text-muted);">${w.week}</div>
+                <div style="font-size: 16px; font-weight: 700; color: var(--primary); margin: 4px 0;">${w.vocab}</div>
+                <div style="font-size: 10px; color: var(--text-muted);">어휘</div>
+              </div>
+            `).join('')}
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted);">
+            에너지 맵 이동: ${weeklyTrend.map(w => w.quadrant).join(' → ')}
+          </div>
+        ` : '<div style="color: var(--text-muted);">3주 데이터가 부족해요</div>'}
+      </div>
+
+      <div style="background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px;">&#128221; 감정 어휘력 성장</div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <span style="font-size: 28px; font-weight: 800; color: var(--primary);">${fullAnalysis.emotions.uniqueCount}</span>
+          <span style="font-size: 14px; color: var(--text-muted);">단어</span>
+          ${week1 ? `<span style="font-size: 12px; color: var(--success);">(1주차 ${week1.emotions.uniqueCount}개 → 현재)</span>` : ''}
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+          주요 감정: ${fullAnalysis.emotions.uniqueWords.slice(0, 6).join(', ')}
+        </div>
       </div>
 
       <div style="background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px;">
         <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px;">&#128300; 초기 프로필과 비교</div>
-        <div style="font-size: 13px; line-height: 1.7;">
-          <p style="margin-bottom: 10px;"><strong>설문 답변:</strong> "${profile.weakness || '자기비판이 심함'}"</p>
-          <p><strong>실제 기록:</strong> 기록에서도 비슷한 패턴이 확인돼요. 인식하고 있다는 것 자체가 변화의 시작이에요!</p>
-        </div>
+        ${profileComparison.map(pc => `
+          <div style="margin-bottom: 10px;">
+            <div style="font-size: 13px;"><strong>설문:</strong> ${pc.survey}</div>
+            <div style="font-size: 13px; color: ${pc.match ? 'var(--primary)' : 'var(--text-muted)'};">
+              <strong>실제:</strong> ${pc.actual}
+              ${pc.match ? ' → 이 차이를 인식하는 것 자체가 중요한 발견이에요!' : ''}
+            </div>
+          </div>
+        `).join('')}
       </div>
 
+      <div style="background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px;">&#128293; 번아웃 추이</div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+          ${burnoutTrend.map((stage, i) => `
+            <div style="text-align: center;">
+              <div style="font-size: 10px; color: var(--text-muted);">${i + 1}주차</div>
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: ${stage <= 2 ? 'var(--success)' : stage <= 3 ? 'var(--warn)' : 'var(--rose)'}; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; margin: 4px auto;">${stage}</div>
+            </div>
+            ${i < burnoutTrend.length - 1 ? '<div style="color: var(--text-muted);">→</div>' : ''}
+          `).join('')}
+        </div>
+        <div style="font-size: 13px;">현재: <strong style="color: ${currentBurnout.stage >= 4 ? 'var(--rose)' : currentBurnout.stage >= 3 ? 'var(--warn)' : 'var(--success)'};">${currentBurnout.stage}단계 (${currentBurnout.name})</strong></div>
+      </div>
+
+      <div style="background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 8px;">&#128161; 종합 인사이트</div>
+        <div style="font-size: 14px; line-height: 1.6;">${mainInsight}</div>
+      </div>
+
+      ${currentBurnout.stage >= 3 ? `
       <div style="background: var(--warn-light); border-radius: var(--radius); padding: 16px; border-left: 4px solid var(--warn);">
-        <div style="font-size: 12px; font-weight: 700; color: var(--warn); margin-bottom: 8px;">&#9888;&#65039; 참고 안내</div>
+        <div style="font-size: 12px; font-weight: 700; color: var(--warn); margin-bottom: 8px;">&#9888;&#65039; 전문가 상담 안내</div>
         <div style="font-size: 13px; line-height: 1.6;">
-          비슷한 패턴이 반복되거나 일상이 힘들다면 전문 상담사와 이야기해보는 것도 좋은 방법이에요.
+          3주간 스트레스가 누적되고 있어요. 전문 상담사와 이야기해보는 것도 좋은 방법이에요.
           <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted);">
-            &#128222; 정신건강위기상담전화 1577-0199<br>
-            &#128172; 자살예방상담전화 1393
+            &#128222; 정신건강위기상담전화 1577-0199
           </div>
         </div>
       </div>
+      ` : ''}
 
       <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 14px;">
         ※ 이 분석은 AI가 생성한 참고자료이며, 전문적인 심리 진단을 대체하지 않습니다.
