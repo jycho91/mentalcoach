@@ -9,3 +9,6 @@ Thumbs.db
 # VS Code 설정
 .vscode/
 .claude/
+
+# Node 의존성
+node_modules/
