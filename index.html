@@ -827,12 +827,6 @@
         </div>
       </div>
 
-      <div class="modal-section" id="api-key-section">
-        <div class="modal-label">Gemini API 키</div>
-        <input type="password" id="api-key-input" placeholder="API 키 입력">
-        <div class="modal-hint">테스트 모드 OFF 시에만 필요해요</div>
-      </div>
-
       <div class="modal-section">
         <button class="btn btn-ghost btn-full" onclick="loadDemoData()">데모 데이터 불러오기 (3주치)</button>
       </div>
@@ -906,34 +900,25 @@ async function callGemini(prompt, systemPrompt, responseType) {
     return getTestResponse(responseType);
   }
 
-  // 실제 API 호출
-  const apiKey = localStorage.getItem('geminiApiKey');
-  if (!apiKey) {
-    showToast('설정에서 API 키를 입력해주세요');
-    return null;
-  }
-
+  // 실제 API 호출 (백엔드 프록시 경유)
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const response = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] }
-      })
+      body: JSON.stringify({ prompt, systemPrompt })
     });
 
     const data = await response.json();
 
     if (data.error) {
-      console.error('Gemini API Error:', data.error);
+      console.error('Gemini Proxy Error:', data.error, data.detail);
       showToast('API 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
       return null;
     }
 
     return data.candidates[0].content.parts[0].text;
   } catch (error) {
-    console.error('Gemini API Error:', error);
+    console.error('Gemini Proxy Error:', error);
     showToast('네트워크 오류가 발생했어요.');
     return null;
   }
@@ -2837,16 +2822,9 @@ function openSettings() {
 
   const settings = getSettings();
   document.getElementById('test-mode-toggle').checked = settings.testMode !== false;
-  document.getElementById('api-key-input').value = settings.apiKey || '';
-
-  updateApiKeyVisibility();
 }
 
 function closeSettings() {
-  const settings = getSettings();
-  settings.apiKey = document.getElementById('api-key-input').value;
-  saveSettings(settings);
-
   document.getElementById('settings-modal').classList.remove('open');
 }
 
@@ -2855,14 +2833,7 @@ function toggleTestMode() {
   settings.testMode = document.getElementById('test-mode-toggle').checked;
   saveSettings(settings);
 
-  updateApiKeyVisibility();
   updateTestBadge();
-}
-
-function updateApiKeyVisibility() {
-  const isTest = document.getElementById('test-mode-toggle').checked;
-  document.getElementById('api-key-section').style.opacity = isTest ? '0.5' : '1';
-  document.getElementById('api-key-input').disabled = isTest;
 }
 
 function updateTestBadge() {
