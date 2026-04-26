@@ -1,0 +1,208 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Stores user-specific settings and preferences for the ReguMate application. Authentication is assumed to be handled by an external system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity. This ID is expected to correspond to an external authentication system's user ID."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name, e.g., 'Jane Doe'."
+        },
+        "workspaceName": {
+          "type": "string",
+          "description": "The name of the organization or workspace the user belongs to, e.g., 'TechCorp'."
+        },
+        "defaultPrivacyMode": {
+          "type": "boolean",
+          "description": "User's preferred default setting for strict privacy mode, indicating whether AI training is prevented on input data."
+        },
+        "defaultVectorDBSearchStrictness": {
+          "type": "number",
+          "description": "User's preferred default setting for vector database retrieval strictness, ranging from 0 to 100.",
+          "format": "float"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "workspaceName",
+        "defaultPrivacyMode",
+        "defaultVectorDBSearchStrictness"
+      ]
+    },
+    "Regulation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Regulation",
+      "type": "object",
+      "description": "Represents a single enterprise regulation or policy document stored in the ReguMate knowledge base.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Regulation entity."
+        },
+        "fileName": {
+          "type": "string",
+          "description": "The original name of the regulation document file."
+        },
+        "content": {
+          "type": "string",
+          "description": "The actual text content of the regulation for AI analysis."
+        },
+        "version": {
+          "type": "string",
+          "description": "An identifier for the version of the regulation."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status (Active, Needs Review, Outdated)."
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "uploadedByUserId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "fileName",
+        "content",
+        "version",
+        "status",
+        "uploadedAt",
+        "uploadedByUserId"
+      ]
+    },
+    "ChatConversation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatConversation",
+      "type": "object",
+      "description": "Represents a single continuous chat interaction with the AI Compliance Chatbot.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatConversation entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who started this conversation."
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastActivityAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "privacyMode": {
+          "type": "boolean"
+        },
+        "vectorDBSearchStrictness": {
+          "type": "number",
+          "format": "float"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "startedAt",
+        "privacyMode",
+        "vectorDBSearchStrictness"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents an individual message within a ChatConversation.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "conversationId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "ai"]
+        },
+        "content": {
+          "type": "string"
+        },
+        "sentAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "conversationId",
+        "role",
+        "content",
+        "sentAt"
+      ]
+    },
+    "RevisionDraft": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RevisionDraft",
+      "type": "object",
+      "description": "Stores proposed regulation revisions.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "inputDirective": { "type": "string" },
+        "generatedDraftContent": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "userId", "inputDirective", "generatedDraftContent", "createdAt", "status"]
+    },
+    "JustificationSummary": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "JustificationSummary",
+      "type": "object",
+      "description": "Stores AI-generated executive summaries.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "limitationSummary": { "type": "string" },
+        "reasonForRevisionSummary": { "type": "string" },
+        "keyChangesSummary": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "limitationSummary", "reasonForRevisionSummary", "keyChangesSummary", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "/userProfiles/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles."
+    },
+    "/regulations/{regulationId}": {
+      "schema": "Regulation",
+      "description": "Shared regulations knowledge base."
+    },
+    "/users/{userId}/chatConversations/{conversationId}": {
+      "schema": "ChatConversation",
+      "description": "User chat history."
+    },
+    "/users/{userId}/chatConversations/{conversationId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Chat messages."
+    }
+  }
+}
