@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RegulMate — 법령-사내규정 동기화 AI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+      background: #F0F4F8;
+      color: #1A2332;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #0F2D6B;
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: #3B82F6;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .logo-sub {
+      font-size: 11px;
+      font-weight: 400;
+      color: #93C5FD;
+      margin-left: 2px;
+    }
+    .header-badge {
+      background: rgba(59,130,246,0.2);
+      color: #93C5FD;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(59,130,246,0.3);
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 60px;
+    }
+
+    /* ── Step card ── */
+    .step-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #E2E8F0;
+      padding: 28px 32px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .step-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #3B82F6;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .step-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1A2332;
+      margin-bottom: 20px;
+    }
+
+    /* ── Select ── */
+    .select-wrap {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    select {
+      width: 100%;
+      appearance: none;
+      background: #F8FAFC;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 8px;
+      padding: 13px 44px 13px 16px;
+      font-size: 14px;
+      color: #1A2332;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    select:focus { outline: none; border-color: #3B82F6; background: #fff; }
+    .select-arrow {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      pointer-events: none; color: #94A3B8; font-size: 12px;
+    }
+
+    /* ── Scan button ── */
+    .btn-scan {
+      width: 100%;
+      background: #0F2D6B;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-scan:hover { background: #1B3E8C; }
+    .btn-scan:active { transform: scale(0.99); }
+    .btn-scan:disabled { background: #94A3B8; cursor: not-allowed; transform: none; }
+
+    /* ── Scan progress ── */
+    .scan-progress {
+      display: none;
+      margin-top: 16px;
+    }
+    .scan-progress.visible { display: block; }
+    .progress-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0;
+      font-size: 13px;
+      color: #64748B;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .progress-row:last-child { border-bottom: none; }
+    .progress-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #CBD5E1; flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .progress-dot.done { background: #10B981; }
+    .progress-dot.active {
+      background: #3B82F6;
+      animation: pulse-dot 0.8s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ── Results section ── */
+    #results {
+      display: none;
+      animation: fadeUp 0.4s ease forwards;
+    }
+    #results.visible { display: block; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .results-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px;
+    }
+    .results-divider {
+      font-size: 12px; font-weight: 600; color: #64748B;
+      letter-spacing: 0.6px; text-transform: uppercase;
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 16px;
+    }
+    .results-divider::before, .results-divider::after {
+      content: ''; flex: 1; height: 1px; background: #E2E8F0;
+    }
+
+    /* ── Alert banner ── */
+    .alert-banner {
+      background: #FFF7ED;
+      border: 1.5px solid #FED7AA;
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .alert-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .alert-title { font-size: 13px; font-weight: 600; color: #92400E; margin-bottom: 4px; }
+    .alert-law { font-size: 15px; font-weight: 700; color: #1A2332; }
+    .alert-law-sub { font-size: 13px; color: #64748B; margin-top: 2px; }
+    .law-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #EFF6FF; color: #1D4ED8;
+      border: 1px solid #BFDBFE;
+      border-radius: 20px; font-size: 11px; font-weight: 600;
+      padding: 3px 10px;
+      margin-top: 6px;
+    }
+
+    /* ── Info cards ── */
+    .info-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .card-label {
+      font-size: 11px; font-weight: 600; color: #3B82F6;
+      letter-spacing: 0.7px; text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .card-label::after { content: ''; flex: 1; height: 1px; background: #EFF6FF; }
+    .card-body { font-size: 13.5px; line-height: 1.8; color: #374151; }
+    .highlight-law { font-weight: 600; color: #1D4ED8; }
+
+    /* ── 주요 골자 list ── */
+    .goja-list { list-style: none; }
+    .goja-list li {
+      display: flex; gap: 10px;
+      font-size: 13.5px; line-height: 1.7; color: #374151;
+      padding: 5px 0;
+      border-bottom: 1px solid #F8FAFC;
+    }
+    .goja-list li:last-child { border-bottom: none; }
+    .goja-num {
+      flex-shrink: 0;
+      width: 20px; height: 20px;
+      background: #EFF6FF; color: #1D4ED8;
+      border-radius: 50%; font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 2px;
+    }
+
+    /* ── 신구조문대비표 ── */
+    .table-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .table-card-header {
+      background: #F8FAFC;
+      border-bottom: 1px solid #E2E8F0;
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .table-card-title {
+      font-size: 13px; font-weight: 700; color: #1A2332;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .table-meta { font-size: 11px; color: #94A3B8; }
+
+    .sijuTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .sijuTable thead th {
+      background: #1E3A8A;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      padding: 12px 16px;
+      letter-spacing: 0.3px;
+    }
+    .sijuTable thead th:first-child { border-right: 1px solid rgba(255,255,255,0.15); }
+    .col-current { background: #FEF9C3 !important; }
+    .col-revised { background: #DCFCE7 !important; }
+
+    .sijuTable tbody td {
+      padding: 16px;
+      vertical-align: top;
+      line-height: 1.85;
+      color: #374151;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .sijuTable tbody td:first-child {
+      border-right: 1px solid #E2E8F0;
+      width: 50%;
+    }
+    .sijuTable tbody tr:last-child td { border-bottom: none; }
+
+    .article-no {
+      font-size: 12px; font-weight: 700; color: #6B7280;
+      margin-bottom: 6px; letter-spacing: 0.2px;
+    }
+    .text-del {
+      text-decoration: line-through;
+      color: #EF4444;
+      background: #FEF2F2;
+      padding: 1px 3px;
+      border-radius: 3px;
+    }
+    .text-add {
+      color: #047857;
+      background: #DCFCE7;
+      padding: 1px 3px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+    .text-unchanged { color: #374151; }
+
+    /* ── Action buttons ── */
+    .action-row {
+      display: flex; gap: 10px; margin-top: 4px;
+    }
+    .btn-action {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: all 0.15s;
+      border: 1.5px solid;
+    }
+    .btn-primary-action {
+      background: #0F2D6B; color: #fff;
+      border-color: #0F2D6B;
+    }
+    .btn-primary-action:hover { background: #1B3E8C; border-color: #1B3E8C; }
+    .btn-secondary-action {
+      background: #fff; color: #1A2332;
+      border-color: #CBD5E1;
+    }
+    .btn-secondary-action:hover { background: #F8FAFC; border-color: #94A3B8; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #1A2332; color: #fff;
+      padding: 12px 20px; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; transition: all 0.3s;
+      pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .container { padding: 16px 16px 48px; }
+      .step-card { padding: 20px; }
+      .sijuTable { font-size: 12px; }
+      .sijuTable tbody td { padding: 12px; }
+    }
+
+    @media print {
+      header, .step-card, .action-row { display: none !important; }
+      #results { display: block !important; }
+      body { background: #fff; }
+      .table-card, .info-card { box-shadow: none; border: 1px solid #ccc; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚖️</div>
+    RegulMate
+    <span class="logo-sub">법령-사내규정 동기화 AI</span>
+  </div>
+  <span class="header-badge">Beta · MBA Demo</span>
+</header>
+
+<!-- Main -->
+<div class="container">
+
+  <!-- Step 1 -->
+  <div class="step-card">
+    <div class="step-label">Step 1</div>
+    <div class="step-title">검토할 사내 규정을 선택하세요</div>
+
+    <div class="select-wrap">
+      <select id="regSelect">
+        <option value="">— 사내 규정 선택 —</option>
+        <option value="취업규칙">📋 취업규칙</option>
+        <option value="안전보건관리규정">🦺 안전보건관리규정</option>
+        <option value="개인정보처리규정">🔒 개인정보처리규정</option>
+      </select>
+      <span class="select-arrow">▼</span>
+    </div>
+
+    <button class="btn-scan" id="scanBtn" onclick="startScan()" disabled>
+      <span id="btnIcon">🔍</span>
+      <span id="btnText">법령 스캔 실행</span>
+    </button>
+
+    <!-- Scan progress -->
+    <div class="scan-progress" id="scanProgress">
+      <div class="progress-row" id="prog1">
+        <div class="progress-dot" id="dot1"></div>
+        <span id="prog1text">국가법령정보센터 연결 중...</span>
+      </div>
+      <div class="progress-row" id="prog2">
+        <div class="progress-dot" id="dot2"></div>
+        <span id="prog2text">최근 법령 개정 이력 조회 중...</span>
+      </div>
+      <div class="progress-row" id="prog3">
+        <div class="progress-dot" id="dot3"></div>
+        <span id="prog3text">사내 규정과 의미 매칭 중...</span>
+      </div>
+      <div class="progress-row" id="prog4">
+        <div class="progress-dot" id="dot4"></div>
+        <span id="prog4text">영향 조문 분석 중...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="results-divider">스캔 결과</div>
+
+    <!-- Alert banner -->
+    <div class="alert-banner">
+      <div class="alert-icon">⚠️</div>
+      <div>
+        <div class="alert-title">개정 필요 법령 발견 — 1건</div>
+        <div class="alert-law" id="res-law-name">근로기준법 제50조 (근로시간)</div>
+        <div class="alert-law-sub" id="res-law-sub">법률 제17326호 · 2020.5.26. 개정 · 시행 2020.5.26.</div>
+        <div class="law-badge" id="res-reg-badge">📋 취업규칙 제12조 영향</div>
+      </div>
+    </div>
+
+    <!-- 개정 사유 -->
+    <div class="info-card">
+      <div class="card-label">📌 개정 필요 사유</div>
+      <div class="card-body" id="res-reason">—</div>
+    </div>
+
+    <!-- 주요 골자 -->
+    <div class="info-card">
+      <div class="card-label">📝 주요 골자</div>
+      <ul class="goja-list" id="res-goja"></ul>
+    </div>
+
+    <!-- 신구조문대비표 -->
+    <div class="table-card">
+      <div class="table-card-header">
+        <div class="table-card-title">
+          📊 신구조문대비표
+        </div>
+        <div class="table-meta" id="res-table-meta">개정일: 2020.5.26.</div>
+      </div>
+      <table class="sijuTable">
+        <thead>
+          <tr>
+            <th>현 &nbsp; 행</th>
+            <th>개 정 안</th>
+          </tr>
+        </thead>
+        <tbody id="sijuTableBody">
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-row">
+      <button class="btn-action btn-secondary-action" onclick="copyText()">
+        📋 개정안 텍스트 복사
+      </button>
+      <button class="btn-action btn-primary-action" onclick="window.print()">
+        🖨️ 인쇄 / PDF 저장
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">✅ 개정안 텍스트가 클립보드에 복사되었습니다</div>
+
+<script>
+  // ── Data ──────────────────────────────────────────────
+  const DATA = {
+    '취업규칙': {
+      lawName: '근로기준법 제50조 (근로시간)',
+      lawSub: '법률 제17326호 · 2020.5.26. 일부개정 · 시행 2020.5.26.',
+      regBadge: '📋 취업규칙 제12조 영향',
+      tableMeta: '개정일: 2020.5.26. | 법률 제17326호',
+      reason: `<span class="highlight-law">근로기준법 제50조 제3항</span>이 2020년 5월 26일 신설(법률 제17326호)되어,
+        <strong>사용자의 지휘·감독 아래에 있는 대기시간이 근로시간으로 명문화</strong>되었습니다.<br><br>
+        현행 취업규칙 제12조(근무시간)는 근무시간에 대기시간 포함 여부를 명시하지 않아
+        법령 불일치 상태입니다. 근로감독 시 지적 대상이 될 수 있으며,
+        분쟁 발생 시 사용자에게 불리하게 작용할 수 있습니다.`,
+      goja: [
+        '취업규칙 제12조에 제2항 신설: 대기시간의 근무시간 산입 명문화',
+        '조문 체계 정비: 기존 단항 구조 → 제1항(근무시간), 제2항(대기시간) 2항 구조로 변경',
+      ],
+      rows: [
+        {
+          article: '제12조 (근무시간)',
+          current: `직원의 근무시간은 1일 8시간, 1주 40시간으로 한다.\n다만, 업무의 필요에 의하여 시간외 근무를 명할 수 있다.`,
+          revised: `① 직원의 근무시간은 1일 8시간, 1주 40시간으로 한다.\n다만, 업무의 필요에 의하여 시간외 근무를 명할 수 있다.\n② <add>직원이 업무를 위하여 사용자의 지휘·감독 아래에 있는 대기시간은 근무시간으로 본다. &lt;신설 2025.○.○.&gt;</add>`,
+        },
+      ],
+    },
+
+    '안전보건관리규정': {
+      lawName: '산업안전보건법 제38조 (안전조치)',
+      lawSub: '법률 제16272호 · 2019.1.15. 전부개정 · 시행 2020.1.16.',
+      regBadge: '🦺 안전보건관리규정 제8조 영향',
+      tableMeta: '개정일: 2019.1.15. | 법률 제16272호',
+      reason: `<span class="highlight-law">산업안전보건법 전부개정(2019.1.15., 법률 제16272호)</span>으로
+        <strong>도급인의 산업재해 예방 의무가 수급인 근로자까지 확대</strong>되었습니다.<br><br>
+        현행 안전보건관리규정 제8조(안전조치)는 자사 근로자에 대한 안전조치만 규정하고 있어,
+        외주·용역 근로자가 사내에서 작업하는 경우의 보호 의무가 누락되어 있습니다.
+        중대재해처벌법 적용 시 경영책임자 형사책임으로 이어질 수 있습니다.`,
+      goja: [
+        '안전보건관리규정 제8조에 제2항 신설: 도급·용역·위탁 근로자에 대한 안전보건조치 의무 명문화',
+        '적용 범위 확대: 자사 근로자 → 사업장 내 수급인 근로자 포함',
+        '위반 시 산업안전보건법 제38조에 따른 제재 조항 반영',
+      ],
+      rows: [
+        {
+          article: '제8조 (안전조치)',
+          current: `회사는 기계·기구 및 그 밖의 설비에 의한 위험으로부터 근로자를 보호하기 위한 안전조치를 하여야 한다.`,
+          revised: `① 회사는 기계·기구 및 그 밖의 설비에 의한 위험으로부터 근로자를 보호하기 위한 안전조치를 하여야 한다.\n② <add>회사는 도급, 용역, 위탁 등을 행하는 경우 수급인의 근로자가 사업장에서 작업하는 동안 산업재해를 예방하기 위하여 안전 및 보건 시설의 설치·점검 등 필요한 안전보건조치를 하여야 한다. &lt;신설 2025.○.○.&gt;</add>`,
+        },
+      ],
+    },
+
+    '개인정보처리규정': {
+      lawName: '개인정보보호법 제29조 (안전조치의무)',
+      lawSub: '법률 제19234호 · 2023.3.14. 일부개정 · 시행 2023.9.15.',
+      regBadge: '🔒 개인정보처리규정 제15조 영향',
+      tableMeta: '개정일: 2023.3.14. | 법률 제19234호',
+      reason: `<span class="highlight-law">개인정보보호법 제29조 개정(2023.3.14., 법률 제19234호)</span> 및
+        <strong>개인정보의 안전성 확보조치 기준 고시 전부개정(2023.9.22.)</strong>으로
+        접근권한 관리 및 재해 대비 백업 의무가 강화되었습니다.<br><br>
+        현행 개인정보처리규정 제15조는 내부 관리계획 수립·접속기록 보관만 규정하여,
+        신설된 접근권한 정기 점검(반기별) 및 백업·복구계획 수립 의무가 누락되어 있습니다.
+        위반 시 개인정보보호위원회 과징금 부과 대상입니다.`,
+      goja: [
+        '개인정보처리규정 제15조에 제2항 신설: 재해·재난 대비 백업 및 복구계획 수립 의무',
+        '제3항 신설: 개인정보처리시스템 접근권한 반기별 정기 점검 의무화',
+        '접근권한 부여 기준 명문화: 업무 수행에 필요한 최소한의 범위로 차등 부여',
+      ],
+      rows: [
+        {
+          article: '제15조 (안전성 확보조치)',
+          current: `회사는 개인정보를 처리함에 있어 개인정보가 분실·도난·유출·위조·변조 또는 훼손되지 아니하도록 내부 관리계획 수립, 접속기록 보관 등 안전성 확보에 필요한 기술적·관리적 조치를 하여야 한다.`,
+          revised: `① 회사는 개인정보를 처리함에 있어 개인정보가 분실·도난·유출·위조·변조 또는 훼손되지 아니하도록 내부 관리계획 수립, 접속기록 보관 등 안전성 확보에 필요한 기술적·관리적 조치를 하여야 한다.\n② <add>회사는 재해·재난 및 개인정보처리시스템의 물리적 손상에 대비하여 개인정보처리시스템 백업 및 복구계획을 수립·시행하여야 한다. &lt;신설 2025.○.○.&gt;</add>\n③ <add>회사는 개인정보처리시스템에 대한 접근권한을 업무 수행에 필요한 최소한의 범위로 차등 부여하고, 이를 반기별로 점검하여야 한다. &lt;신설 2025.○.○.&gt;</add>`,
+        },
+      ],
+    },
+  };
+
+  // ── Enable button on select ────────────────────────────
+  document.getElementById('regSelect').addEventListener('change', function() {
+    document.getElementById('scanBtn').disabled = !this.value;
+  });
+
+  // ── Scan flow ──────────────────────────────────────────
+  async function startScan() {
+    const reg = document.getElementById('regSelect').value;
+    if (!reg) return;
+
+    const btn = document.getElementById('scanBtn');
+    btn.disabled = true;
+    document.getElementById('btnIcon').textContent = '⏳';
+    document.getElementById('btnText').textContent = '스캔 중...';
+
+    // Hide old results
+    const results = document.getElementById('results');
+    results.classList.remove('visible');
+    results.style.display = 'none';
+
+    // Show progress
+    const prog = document.getElementById('scanProgress');
+    prog.classList.add('visible');
+    resetDots();
+
+    // Animate progress steps
+    await animateStep('dot1', 'prog1text', '국가법령정보센터 연결 중...', '✓ 국가법령정보센터 연결 완료', 700);
+    await animateStep('dot2', 'prog2text', '최근 법령 개정 이력 조회 중...', `✓ 최근 개정 법령 ${reg === '취업규칙' ? 14 : reg === '안전보건관리규정' ? 9 : 11}건 확인`, 900);
+    await animateStep('dot3', 'prog3text', '사내 규정과 의미 매칭 중...', '✓ 의미 매칭 완료 — 영향 조문 발견', 800);
+    await animateStep('dot4', 'prog4text', '개정 필요 사유 분석 중...', '✓ 분석 완료', 700);
+
+    await sleep(300);
+
+    // Populate results
+    populateResults(reg);
+
+    // Show results
+    results.style.display = 'block';
+    results.classList.add('visible');
+
+    // Reset button
+    btn.disabled = false;
+    document.getElementById('btnIcon').textContent = '🔄';
+    document.getElementById('btnText').textContent = '다시 스캔';
+  }
+
+  function resetDots() {
+    ['dot1','dot2','dot3','dot4'].forEach(id => {
+      const d = document.getElementById(id);
+      d.className = 'progress-dot';
+    });
+    document.getElementById('prog1text').textContent = '국가법령정보센터 연결 중...';
+    document.getElementById('prog2text').textContent = '최근 법령 개정 이력 조회 중...';
+    document.getElementById('prog3text').textContent = '사내 규정과 의미 매칭 중...';
+    document.getElementById('prog4text').textContent = '영향 조문 분석 중...';
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function animateStep(dotId, textId, loadingText, doneText, duration) {
+    const dot = document.getElementById(dotId);
+    const text = document.getElementById(textId);
+    dot.className = 'progress-dot active';
+    text.textContent = loadingText;
+    await sleep(duration);
+    dot.className = 'progress-dot done';
+    text.textContent = doneText;
+  }
+
+  // ── Populate results ───────────────────────────────────
+  function populateResults(reg) {
+    const d = DATA[reg];
+    document.getElementById('res-law-name').textContent = d.lawName;
+    document.getElementById('res-law-sub').textContent = d.lawSub;
+    document.getElementById('res-reg-badge').textContent = d.regBadge;
+    document.getElementById('res-table-meta').textContent = d.tableMeta;
+    document.getElementById('res-reason').innerHTML = d.reason;
+
+    // 주요 골자
+    const gojaEl = document.getElementById('res-goja');
+    gojaEl.innerHTML = '';
+    d.goja.forEach((item, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="goja-num">${i + 1}</span><span>${item}</span>`;
+      gojaEl.appendChild(li);
+    });
+
+    // 신구조문대비표
+    const tbody = document.getElementById('sijuTableBody');
+    tbody.innerHTML = '';
+    d.rows.forEach(row => {
+      const tr = document.createElement('tr');
+
+      // Current cell
+      const tdCur = document.createElement('td');
+      tdCur.innerHTML = `<div class="article-no">${row.article}</div>${formatText(row.current)}`;
+
+      // Revised cell
+      const tdRev = document.createElement('td');
+      tdRev.innerHTML = `<div class="article-no">${row.article}</div>${formatText(row.revised, true)}`;
+
+      tr.appendChild(tdCur);
+      tr.appendChild(tdRev);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function formatText(text, isRevised = false) {
+    if (!isRevised) {
+      return text.split('\n').map(line => `<div>${line}</div>`).join('');
+    }
+    // Parse <add> tags
+    const lines = text.split('\n');
+    return lines.map(line => {
+      return line.replace(/<add>(.*?)<\/add>/g, (_, content) =>
+        `<span class="text-add">${content}</span>`
+      );
+    }).map(line => `<div>${line}</div>`).join('');
+  }
+
+  // ── Copy text ──────────────────────────────────────────
+  function copyText() {
+    const reg = document.getElementById('regSelect').value;
+    if (!reg) return;
+    const d = DATA[reg];
+    const row = d.rows[0];
+    const plainRevised = row.revised.replace(/<add>(.*?)<\/add>/g, '$1').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+    const text = `[신구조문대비표]\n${row.article}\n\n▶ 현행\n${row.current}\n\n▶ 개정안\n${plainRevised}`;
+    navigator.clipboard.writeText(text).then(() => showToast('✅ 개정안 텍스트가 클립보드에 복사되었습니다'));
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+</script>
+</body>
+</html>
