@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// MVP: Anonymous auth로 본인 워크스페이스만 read/write 허용
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 사용자별 사내 규정
+    match /workspaces/{userId}/rules/{ruleId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 사용자별 스캔 결과
+    match /workspaces/{userId}/scans/{scanId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 사용자별 개정안 패키지
+    match /workspaces/{userId}/amendments/{amendmentId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 공용 법령 변경 이벤트 (read-only)
+    match /lawChanges/{changeId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

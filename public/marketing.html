@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RegulMate · 법령이 바뀌면, 우리 회사 규정이 스스로 바뀐다.</title>
+<meta name="description" content="레귤메이트는 Korea Law MCP로 국가법령정보센터와 실시간 연동하여, 법령 개정 모니터링부터 사내 규정 개정안 작성까지 컴플라이언스 프로세스를 자동화하는 B2B SaaS입니다." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafbfc;
+    --surface: #ffffff;
+    --ink: #0b1426;
+    --ink-soft: #2a3447;
+    --muted: #5a6478;
+    --line: #e5e8ee;
+    --line-soft: #eef0f4;
+    --brand: #1e3a8a;
+    --brand-2: #3b82f6;
+    --brand-soft: #eef4ff;
+    --accent: #b45309;
+    --accent-soft: #fef3c7;
+    --good: #047857;
+    --good-soft: #ecfdf5;
+    --bad: #b91c1c;
+    --bad-soft: #fef2f2;
+    --radius: 14px;
+    --radius-lg: 20px;
+    --shadow-sm: 0 1px 2px rgba(11,20,38,.04), 0 1px 1px rgba(11,20,38,.03);
+    --shadow: 0 8px 24px -8px rgba(11,20,38,.12), 0 2px 6px -2px rgba(11,20,38,.06);
+    --shadow-lg: 0 30px 60px -20px rgba(11,20,38,.18), 0 10px 20px -10px rgba(11,20,38,.08);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+    font-feature-settings: "ss03", "ss04";
+  }
+  a { color: inherit; text-decoration: none; }
+  .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+
+  /* NAV */
+  nav.top {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(250,251,252,.85);
+    backdrop-filter: saturate(140%) blur(10px);
+    -webkit-backdrop-filter: saturate(140%) blur(10px);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  nav.top .row {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+  }
+  .logo {
+    font-weight: 800; font-size: 19px; letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo .mark {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 14px; font-weight: 800;
+    box-shadow: 0 4px 10px -2px rgba(30,58,138,.4);
+  }
+  .nav-links { display: flex; gap: 28px; font-size: 14.5px; color: var(--ink-soft); }
+  .nav-links a { transition: color .15s; }
+  .nav-links a:hover { color: var(--brand); }
+  .nav-cta {
+    background: var(--ink); color: #fff;
+    padding: 9px 16px; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    transition: transform .15s, background .15s;
+  }
+  .nav-cta:hover { background: var(--brand); transform: translateY(-1px); }
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+  }
+
+  /* HERO */
+  .hero {
+    padding: 96px 0 72px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: ""; position: absolute;
+    top: -200px; right: -100px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(59,130,246,.10), transparent 60%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: ""; position: absolute;
+    bottom: -200px; left: -100px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(180,83,9,.06), transparent 60%);
+    pointer-events: none;
+  }
+  .hero-inner { position: relative; z-index: 1; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px;
+    background: var(--brand-soft); color: var(--brand);
+    font-size: 13px; font-weight: 600;
+    border: 1px solid #dbe5ff;
+  }
+  .eyebrow .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--brand-2);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.2);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .7; transform: scale(1.4); }
+  }
+  h1.hero-title {
+    margin: 24px 0 20px;
+    font-size: clamp(36px, 5.4vw, 60px);
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+    font-weight: 800;
+    color: var(--ink);
+    max-width: 18ch;
+  }
+  h1.hero-title .hl {
+    background: linear-gradient(180deg, transparent 60%, var(--accent-soft) 60%);
+    padding: 0 4px;
+  }
+  .hero-sub {
+    font-size: clamp(16px, 1.6vw, 19px);
+    color: var(--ink-soft);
+    max-width: 56ch;
+    margin: 0 0 36px;
+    line-height: 1.65;
+  }
+  .cta-row {
+    display: flex; gap: 12px; flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 22px; border-radius: 12px;
+    font-size: 15px; font-weight: 600;
+    transition: transform .15s, box-shadow .15s, background .15s;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--ink); color: #fff;
+    box-shadow: var(--shadow);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); background: var(--brand); }
+  .btn-ghost {
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn-ghost:hover { border-color: var(--ink); transform: translateY(-2px); }
+  .btn .arrow { transition: transform .2s; }
+  .btn:hover .arrow { transform: translateX(3px); }
+
+  .hero-meta {
+    display: flex; gap: 28px; flex-wrap: wrap;
+    margin-top: 56px;
+    padding-top: 32px;
+    border-top: 1px dashed var(--line);
+    font-size: 13.5px; color: var(--muted);
+  }
+  .hero-meta b { color: var(--ink); font-weight: 700; }
+
+  /* SECTIONS */
+  section { padding: 88px 0; }
+  .section-head { margin-bottom: 56px; max-width: 60ch; }
+  .section-tag {
+    font-size: 13px; font-weight: 700; color: var(--brand);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: clamp(28px, 3.8vw, 40px);
+    letter-spacing: -0.03em; font-weight: 800;
+    margin: 0 0 16px; line-height: 1.2;
+  }
+  .section-desc {
+    font-size: 17px; color: var(--ink-soft); line-height: 1.7;
+    margin: 0;
+  }
+
+  /* PROBLEM */
+  .problem { background: var(--surface); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+  }
+  .pain {
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    transition: transform .2s, border-color .2s, box-shadow .2s;
+  }
+  .pain:hover {
+    transform: translateY(-4px);
+    border-color: #c7d3e8;
+    box-shadow: var(--shadow);
+  }
+  .pain .num {
+    font-family: 'Pretendard', sans-serif;
+    font-size: 13px; color: var(--brand);
+    font-weight: 700; letter-spacing: 0.04em;
+    margin-bottom: 12px;
+  }
+  .pain h3 {
+    margin: 0 0 8px; font-size: 17px;
+    font-weight: 700; letter-spacing: -0.015em;
+  }
+  .pain p {
+    margin: 0; font-size: 14.5px;
+    color: var(--muted); line-height: 1.65;
+  }
+
+  /* PIPELINE */
+  .pipeline { background: var(--bg); }
+  .pipe {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 18px;
+    align-items: stretch;
+    margin-top: 16px;
+  }
+  @media (max-width: 900px) {
+    .pipe { grid-template-columns: 1fr; }
+    .pipe .arrow-cell { display: none; }
+  }
+  .pipe-step {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 28px 26px;
+    position: relative;
+    transition: transform .25s, box-shadow .25s, border-color .25s;
+  }
+  .pipe-step:hover {
+    transform: translateY(-4px);
+    border-color: var(--brand-2);
+    box-shadow: var(--shadow);
+  }
+  .pipe-step .step-num {
+    position: absolute; top: -14px; left: 24px;
+    background: var(--ink); color: #fff;
+    padding: 4px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .pipe-step .step-icon {
+    font-size: 28px; margin-bottom: 14px;
+    display: block;
+  }
+  .pipe-step h4 {
+    margin: 0 0 10px; font-size: 18px;
+    font-weight: 700; letter-spacing: -0.02em;
+  }
+  .pipe-step p {
+    margin: 0 0 14px; font-size: 14.5px;
+    color: var(--muted); line-height: 1.65;
+  }
+  .pipe-step .out {
+    background: #f5f7fb;
+    border: 1px solid var(--line-soft);
+    padding: 12px 14px; border-radius: 10px;
+    font-size: 13px; line-height: 1.55;
+    color: var(--ink-soft);
+    font-family: 'Pretendard', monospace;
+  }
+  .pipe-step .out b { color: var(--ink); }
+  .arrow-cell {
+    align-self: center;
+    color: var(--brand-2);
+    font-size: 26px;
+    font-weight: 300;
+    padding: 0 4px;
+  }
+  .step2-highlight { border-color: #d6e2ff; background: linear-gradient(180deg, var(--surface) 0%, #f7faff 100%); }
+  .principle {
+    margin-top: 36px;
+    padding: 24px 28px;
+    background: var(--accent-soft);
+    border: 1px solid #fde68a;
+    border-radius: var(--radius);
+    font-size: 15.5px;
+    color: #78350f;
+    line-height: 1.7;
+  }
+  .principle b { color: #7c2d12; }
+
+  /* FEATURES */
+  .features { background: var(--surface); border-top: 1px solid var(--line-soft); }
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+  }
+  .feat {
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+    position: relative;
+  }
+  .feat:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow);
+    border-color: #c7d3e8;
+  }
+  .feat .badge {
+    position: absolute; top: 18px; right: 18px;
+    font-size: 11px; font-weight: 700;
+    padding: 3px 9px; border-radius: 999px;
+    letter-spacing: 0.05em;
+  }
+  .badge-p0 { background: var(--brand-soft); color: var(--brand); }
+  .badge-p1 { background: #f0fdf4; color: var(--good); }
+  .badge-p2 { background: #f3f4f6; color: var(--muted); }
+  .feat .icon {
+    font-size: 26px; margin-bottom: 14px;
+    display: block;
+  }
+  .feat h3 { margin: 0 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.015em; }
+  .feat p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.65; }
+
+  /* DEMO */
+  .demo { background: var(--ink); color: #fff; position: relative; overflow: hidden; }
+  .demo::before {
+    content: ""; position: absolute;
+    top: -150px; right: -100px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(59,130,246,.18), transparent 60%);
+  }
+  .demo .section-head { position: relative; }
+  .demo .section-tag { color: #93c5fd; }
+  .demo .section-desc { color: rgba(255,255,255,.72); }
+  .demo h2 { color: #fff; }
+  .timeline {
+    position: relative;
+    padding-left: 28px;
+    border-left: 2px dashed rgba(255,255,255,.18);
+  }
+  .step-row {
+    position: relative;
+    padding: 18px 0 18px 24px;
+  }
+  .step-row::before {
+    content: ""; position: absolute;
+    left: -36px; top: 24px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--brand-2);
+    border: 3px solid var(--ink);
+    box-shadow: 0 0 0 2px var(--brand-2);
+  }
+  .step-row .num {
+    font-size: 12px; color: #93c5fd;
+    font-weight: 700; letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .step-row h4 {
+    margin: 0 0 8px; font-size: 18px;
+    font-weight: 700; letter-spacing: -0.02em;
+    color: #fff;
+  }
+  .step-row p {
+    margin: 0; color: rgba(255,255,255,.7);
+    font-size: 14.5px; line-height: 1.7;
+  }
+  .step-row code {
+    display: block; margin-top: 10px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    font-family: ui-monospace, 'SF Mono', 'Pretendard', monospace;
+    font-size: 13px; line-height: 1.6;
+    color: #c7d2fe;
+    white-space: pre-wrap;
+  }
+
+  /* COMPARE */
+  .compare-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: 14.5px;
+  }
+  .compare-table th, .compare-table td {
+    padding: 16px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .compare-table th {
+    background: #f8f9fc;
+    font-weight: 700;
+    color: var(--ink-soft);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .compare-table tbody tr:last-child td { border-bottom: none; }
+  .compare-table .ours td {
+    background: linear-gradient(90deg, var(--brand-soft) 0%, transparent 100%);
+    font-weight: 600;
+  }
+  .compare-table .ours td:first-child {
+    color: var(--brand);
+    font-weight: 800;
+  }
+  .yes { color: var(--good); font-weight: 700; }
+  .no { color: var(--muted); }
+
+  /* TARGET */
+  .target { background: var(--bg); }
+  .industries {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .ind {
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    transition: transform .2s, border-color .2s;
+  }
+  .ind:hover { transform: translateY(-3px); border-color: var(--brand-2); }
+  .ind .ind-icon { font-size: 22px; margin-bottom: 10px; display: block; }
+  .ind h4 { margin: 0 0 4px; font-size: 16px; font-weight: 700; letter-spacing: -0.015em; }
+  .ind p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.55; }
+
+  /* CTA */
+  .final-cta {
+    background: linear-gradient(135deg, #0b1426 0%, #1e3a8a 100%);
+    color: #fff;
+    border-radius: var(--radius-lg);
+    padding: 64px 48px;
+    text-align: center;
+    margin: 88px auto;
+    max-width: 1160px;
+    position: relative;
+    overflow: hidden;
+  }
+  .final-cta::before {
+    content: ""; position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 0%, rgba(59,130,246,.3), transparent 50%),
+                radial-gradient(circle at 70% 100%, rgba(180,83,9,.15), transparent 50%);
+    pointer-events: none;
+  }
+  .final-cta-inner { position: relative; }
+  .final-cta h2 {
+    margin: 0 0 14px;
+    font-size: clamp(26px, 3.4vw, 36px);
+    letter-spacing: -0.025em;
+    font-weight: 800;
+    color: #fff;
+  }
+  .final-cta p {
+    margin: 0 auto 28px;
+    color: rgba(255,255,255,.78);
+    font-size: 16px;
+    max-width: 50ch;
+    line-height: 1.7;
+  }
+  .final-cta .btn-primary {
+    background: #fff; color: var(--ink);
+  }
+  .final-cta .btn-primary:hover { background: var(--accent-soft); }
+  .final-cta .btn-ghost {
+    background: transparent; color: #fff;
+    border-color: rgba(255,255,255,.3);
+  }
+  .final-cta .btn-ghost:hover { border-color: #fff; }
+  @media (max-width: 600px) {
+    .final-cta { padding: 44px 24px; margin: 56px 16px; }
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--line-soft);
+    padding: 36px 0;
+    color: var(--muted);
+    font-size: 13.5px;
+    background: var(--surface);
+  }
+  footer .row {
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    align-items: center;
+  }
+  footer a { color: var(--ink-soft); }
+  footer a:hover { color: var(--brand); }
+
+  /* REVEAL animation */
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="container row">
+    <a href="#top" class="logo">
+      <span class="mark">R</span>
+      <span>RegulMate</span>
+    </a>
+    <div class="nav-links">
+      <a href="#problem">문제</a>
+      <a href="#pipeline">파이프라인</a>
+      <a href="#features">기능</a>
+      <a href="#demo">데모</a>
+      <a href="#compare">비교</a>
+    </div>
+    <a href="#cta" class="nav-cta">데모 문의</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="container hero-inner">
+    <span class="eyebrow"><span class="dot"></span> Korea Law MCP · 실시간 연동</span>
+    <h1 class="hero-title">
+      법령이 바뀌면,<br/>
+      우리 회사 규정이 <span class="hl">스스로 바뀐다.</span>
+    </h1>
+    <p class="hero-sub">
+      국가법령정보센터와 실시간 연동되는 컴플라이언스 자동화 SaaS.
+      법령 개정 모니터링부터 사내 규정 영향 분석, 개정안 초안, 판례 검증, 결재용 사유서까지
+      &mdash; 3일 걸리던 작업을 한 번의 클릭으로.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#demo">데모 시나리오 보기 <span class="arrow">→</span></a>
+      <a class="btn btn-ghost" href="#pipeline">2단계 파이프라인 둘러보기</a>
+    </div>
+    <div class="hero-meta">
+      <div><b>📡 Step 1.</b> 디텍팅 — 영향받는 규정 + 법적 근거 자동 추출</div>
+      <div><b>📝 Step 2.</b> 개정안 초안 + 대법원 판례 교차 검증</div>
+      <div><b>🛡️ 설계 원칙.</b> AI가 찾아주고 · 사람이 선택하고 · AI가 작성</div>
+    </div>
+  </div>
+</header>
+
+<!-- PROBLEM -->
+<section class="problem" id="problem">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-tag">Problem</div>
+      <h2 class="section-title">컴플라이언스는 사이드 잡이 아닌 시한폭탄이 되었다.</h2>
+      <p class="section-desc">
+        연간 수백 건의 법령 개정. 부서마다 흩어진 사내 규정 수십 개.
+        규정 하나 손대려면 신구조문대비표·개정사유서·주요골자가 모두 수작업.
+        그러는 사이 중대재해처벌법은 경영진 개인 책임을 묻기 시작했습니다.
+      </p>
+    </div>
+    <div class="problem-grid">
+      <div class="pain reveal">
+        <div class="num">PAIN 01</div>
+        <h3>아무도 모르게 바뀐다</h3>
+        <p>국가법령정보센터를 사람이 일일이 모니터링하는 건 불가능. 우리 회사에 영향 가는 건지조차 모른다.</p>
+      </div>
+      <div class="pain reveal">
+        <div class="num">PAIN 02</div>
+        <h3>어느 규정이 영향받나?</h3>
+        <p>인사·법무·보안·총무에 흩어진 규정. 의미 매칭은 검색이나 규칙 기반으론 안 풀린다.</p>
+      </div>
+      <div class="pain reveal">
+        <div class="num">PAIN 03</div>
+        <h3>3일짜리 문서 작업</h3>
+        <p>신구조문대비표, 개정사유서, 주요골자 — 규정 하나 고치는 데 본업이 멈춘다.</p>
+      </div>
+      <div class="pain reveal">
+        <div class="num">PAIN 04</div>
+        <h3>경영진 개인 책임</h3>
+        <p>중대재해처벌법 이후, 컴플라이언스 미스는 법인 과태료가 아닌 임원 형사책임으로 직결.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<section class="pipeline" id="pipeline">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-tag">Solution Pipeline</div>
+      <h2 class="section-title">2단계 파이프라인 — 디텍팅부터 결재 패키지까지.</h2>
+      <p class="section-desc">
+        AI가 알아서 다 바꾸는 게 아닙니다. <b>AI가 찾아주고, 사람이 선택하고, AI가 작성</b>합니다.
+        실무 신뢰도와 기술 현실성을 동시에 잡는 설계.
+      </p>
+    </div>
+
+    <div class="pipe">
+      <div class="pipe-step reveal">
+        <span class="step-num">STEP 1</span>
+        <span class="step-icon">📡</span>
+        <h4>디텍팅 (스캔 모드)</h4>
+        <p>Korea Law MCP가 법령 개정을 폴링하고, 사내 규정 임베딩과 의미 매칭으로 영향받는 조문을 추려냅니다.</p>
+        <div class="out">
+          <b>→ 취업규칙 제12조</b><br/>
+          근로기준법 제50조 개정으로 근로시간 기준 변경. 현행 규정이 구법 기준이므로 개정 필요.
+        </div>
+      </div>
+
+      <div class="arrow-cell">→</div>
+
+      <div class="pipe-step reveal">
+        <span class="step-num">USER</span>
+        <span class="step-icon">🧑‍⚖️</span>
+        <h4>실무자가 선택</h4>
+        <p>영향받는 규정 리스트에서 어떤 규정을 먼저 손볼지 의사결정. 실무 책임자의 판단이 자동화 위에 들어옵니다.</p>
+        <div class="out">
+          <b>→ "취업규칙" 선택</b><br/>
+          "개정안 추천" 클릭 시 Step 2 실행.
+        </div>
+      </div>
+
+      <div class="arrow-cell">→</div>
+
+      <div class="pipe-step step2-highlight reveal">
+        <span class="step-num">STEP 2</span>
+        <span class="step-icon">📝</span>
+        <h4>개정안 + 판례 검증</h4>
+        <p>선택된 규정 × 해당 법령 집중 분석. 대법원 판례 DB와 교차검증해 결재용 패키지를 완성합니다.</p>
+        <div class="out">
+          <b>→ 결재용 패키지</b><br/>
+          개정 사유 · 주요 골자 · <b>신구조문대비표</b> · 판례 검증 리포트
+        </div>
+      </div>
+    </div>
+
+    <div class="principle reveal">
+      <b>🎯 설계 원칙.</b> 자동 결재 X · <b>자동 초안 ⭕️</b> &mdash;
+      법무·준법감시 실무에서 무너지면 안 되는 신뢰선을 지키기 위해, 마지막 결정은 항상 사람의 손에 둡니다.
+      그래서 도입 후 첫날부터 쓸 수 있는 컴플라이언스 도구가 됩니다.
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-tag">Core Features</div>
+      <h2 class="section-title">5대 핵심 기능 · 출시 우선순위 표시</h2>
+      <p class="section-desc">
+        P0은 MVP 데모에서 라이브로 시연합니다. 나머지는 같은 매칭 엔진 위에 모듈로 얹힙니다.
+      </p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat reveal">
+        <span class="badge badge-p0">P0</span>
+        <span class="icon">📡</span>
+        <h3>법령 개정 디텍팅</h3>
+        <p>스캔 모드. 영향받는 규정 리스트와 규정별 개정 필요 사유, 근거 법 조문까지.</p>
+      </div>
+      <div class="feat reveal">
+        <span class="badge badge-p0">P0</span>
+        <span class="icon">📝</span>
+        <h3>개정안 자동 생성 + 판례 검증</h3>
+        <p>선택 모드. 개정 사유 · 주요 골자 · 신구조문대비표 · 판례 교차검증 리포트.</p>
+      </div>
+      <div class="feat reveal">
+        <span class="badge badge-p1">P0.5</span>
+        <span class="icon">🔗</span>
+        <h3>연쇄 영향 탐지 (도미노 체크)</h3>
+        <p>개정된 규정이 다른 사내 규정에 미치는 추가 영향까지 재스캔.</p>
+      </div>
+      <div class="feat reveal">
+        <span class="badge badge-p1">P1</span>
+        <span class="icon">⚖️</span>
+        <h3>내부 규정 간 충돌 탐지</h3>
+        <p>부서별로 흩어진 규정 사이의 모순 조항을 자동 발견하고 중재안 제시.</p>
+      </div>
+      <div class="feat reveal">
+        <span class="badge badge-p1">P1</span>
+        <span class="icon">🤖</span>
+        <h3>통합 컴플라이언스 챗봇</h3>
+        <p>사내 규정과 외부 판례를 함께 엮어 실시간 행동 가이드를 제공.</p>
+      </div>
+      <div class="feat reveal">
+        <span class="badge badge-p2">P2</span>
+        <span class="icon">🎯</span>
+        <h3>경영 방향성 기반 일괄 정렬</h3>
+        <p>경영 전략 변화에 맞춰 전사 규정을 한 번에 재정렬하는 일괄 개정안.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO -->
+<section class="demo" id="demo">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-tag">Demo Scenario</div>
+      <h2 class="section-title">4분 데모. 출력이 곧 제품입니다.</h2>
+      <p class="section-desc">
+        사내 규정 10개 사전 로드 → "최근 법령 개정 스캔" → 영향 규정 3건 → "개정안 추천" → 결재 패키지.
+        Step 1은 라이브, Step 2는 사전 생성된 폴리시드 출력.
+      </p>
+    </div>
+
+    <div class="timeline">
+      <div class="step-row reveal">
+        <div class="num">01 · SETUP</div>
+        <h4>사내 규정 10개 사전 로드</h4>
+        <p>취업규칙, 개인정보처리방침, 안전보건관리규정, 보안규정, 복무규정, 징계규정, 퇴직금규정, 정보보안규정, 하도급관리규정, 연봉계약 가이드라인.</p>
+      </div>
+
+      <div class="step-row reveal">
+        <div class="num">02 · LIVE</div>
+        <h4>"최근 법령 개정 스캔" 클릭</h4>
+        <p>Korea Law MCP가 국가법령정보센터를 폴링. 매칭 엔진이 임베딩 유사도로 영향 규정을 추려냅니다.</p>
+        <code>→ 3건의 영향받는 규정 발견
+→ 취업규칙 제12조 (근로기준법 제50조 개정)
+→ 개인정보처리규정 제8조 (개인정보보호법 시행령 제30조)
+→ 안전보건관리규정 제6조 (중대재해처벌법 시행규칙)</code>
+      </div>
+
+      <div class="step-row reveal">
+        <div class="num">03 · SELECT</div>
+        <h4>"취업규칙" 선택 → "개정안 추천"</h4>
+        <p>실무자가 가장 시급한 규정을 골라 개정 파이프라인을 트리거.</p>
+      </div>
+
+      <div class="step-row reveal">
+        <div class="num">04 · OUTPUT</div>
+        <h4>결재용 패키지 4종 출력</h4>
+        <p>이게 그날 데모에서 가장 큰 박수가 나오는 지점입니다. — "이걸 사람이 3일 걸려서 만들고 있었다고요?"</p>
+        <code>📄 개정 사유서
+📋 주요 골자
+📊 신구조문대비표 (현행 ↔ 개정안)
+⚖️ 판례 검증 리포트 (대법원 판례 교차)</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section id="compare">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-tag">Why RegulMate</div>
+      <h2 class="section-title">검색 도구도, 글로벌 GRC도 못 푸는 자리.</h2>
+      <p class="section-desc">
+        법령 검색 서비스는 "검색"에서 멈춥니다. 글로벌 GRC는 한국 법제 인프라와 연결되어 있지 않습니다.
+        그 사이의 빈자리가 RegulMate가 채우는 자리입니다.
+      </p>
+    </div>
+
+    <table class="compare-table reveal">
+      <thead>
+        <tr>
+          <th>솔루션</th>
+          <th>커버리지</th>
+          <th>국가법령정보센터 실시간 연동</th>
+          <th>한국 양식 (신구조문대비표 등)</th>
+          <th>사내 규정 자동 매칭</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>NAVEX / SAI360 / Regology</td>
+          <td>Global</td>
+          <td class="no">없음</td>
+          <td class="no">없음</td>
+          <td class="no">없음</td>
+        </tr>
+        <tr>
+          <td>로앤비 · 케이스노트</td>
+          <td>Korea</td>
+          <td class="no">검색만</td>
+          <td class="no">없음</td>
+          <td class="no">없음</td>
+        </tr>
+        <tr>
+          <td>법무법인 자문</td>
+          <td>Korea</td>
+          <td class="no">사람 의존</td>
+          <td class="yes">가능</td>
+          <td class="no">없음</td>
+        </tr>
+        <tr class="ours">
+          <td>RegulMate</td>
+          <td>Korea</td>
+          <td class="yes">✓ MCP 기반 실시간</td>
+          <td class="yes">✓ 신구조문대비표 자동</td>
+          <td class="yes">✓ 임베딩 매칭</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- TARGET -->
+<section class="target">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-tag">Target Industries</div>
+      <h2 class="section-title">규제 변화에 가장 민감한 곳에서 시작합니다.</h2>
+      <p class="section-desc">
+        실무자(부서 매니저)가 시작하고 → ROI를 입증해 → 준법감시인·법무팀이 전사로 확장하는 Bottom-up GTM.
+      </p>
+    </div>
+    <div class="industries">
+      <div class="ind reveal">
+        <span class="ind-icon">💊</span>
+        <h4>제약</h4>
+        <p>약사법, GMP, 임상시험 규정 변경이 빈번한 산업.</p>
+      </div>
+      <div class="ind reveal">
+        <span class="ind-icon">🏦</span>
+        <h4>금융</h4>
+        <p>자본시장법, 개인정보보호법, 금소법이 동시에 움직이는 환경.</p>
+      </div>
+      <div class="ind reveal">
+        <span class="ind-icon">🏛️</span>
+        <h4>공공기관</h4>
+        <p>청탁금지법, 공공감사법, 이해충돌방지법 등 적용.</p>
+      </div>
+      <div class="ind reveal">
+        <span class="ind-icon">🏢</span>
+        <h4>대기업 법무 · 준법감시</h4>
+        <p>중대재해처벌법 대응. 수십 개 부서 규정의 일관성 관리.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<div class="final-cta" id="cta">
+  <div class="final-cta-inner">
+    <h2>법령 변화를 먼저 알고 싶으신가요?</h2>
+    <p>
+      RegulMate 데모 세션을 신청하시면, 귀사 규정 3건을 샘플로 실제 매칭과 개정안 초안을 직접 확인하실 수 있습니다.
+    </p>
+    <div class="cta-row" style="justify-content: center;">
+      <a class="btn btn-primary" href="mailto:cksung9009@gmail.com?subject=RegulMate%20%EB%8D%B0%EB%AA%A8%20%EB%AC%B8%EC%9D%98">데모 신청 메일 보내기 <span class="arrow">→</span></a>
+      <a class="btn btn-ghost" href="#pipeline">파이프라인 다시 보기</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="container row">
+    <div>© 2026 RegulMate · MBA Term Project — Korea Law MCP × Compliance Automation</div>
+    <div>
+      <a href="MANIFESTO.md">Manifesto</a> &nbsp;·&nbsp;
+      <a href="PROPOSAL.md">Proposal</a> &nbsp;·&nbsp;
+      <a href="WHYTREE.md">WhyTree</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Reveal-on-scroll
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>

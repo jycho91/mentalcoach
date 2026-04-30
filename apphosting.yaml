@@ -1,0 +1,19 @@
+# Firebase App Hosting configuration
+# https://firebase.google.com/docs/app-hosting
+
+runConfig:
+  cpu: 1
+  memoryMiB: 1024
+  maxInstances: 5
+  minInstances: 0
+  concurrency: 80
+
+env:
+  - variable: NEXT_PUBLIC_DEMO_MODE
+    value: "1"
+    availability:
+      - BUILD
+      - RUNTIME
+  # Genkit / Gemini API key — App Hosting Secret으로 등록 후 활성화
+  # - variable: GOOGLE_GENAI_API_KEY
+  #   secret: GOOGLE_GENAI_API_KEY
