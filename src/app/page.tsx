@@ -4,12 +4,13 @@ import { useState, useEffect } from "react"
 import {
   Book, PenTool, FileSearch, MessageSquare, Shield,
   ShieldOff, User, ChevronDown, Sliders, Settings, Loader2,
-  RefreshCw, AlertTriangle, LogOut
+  RefreshCw, AlertTriangle, LogOut, Scale
 } from "lucide-react"
 import { KnowledgeBase } from "@/components/knowledge-base"
 import { RevisionDrafter } from "@/components/revision-drafter"
 import { JustificationExtractor } from "@/components/justification-extractor"
 import { ComplianceChatbot } from "@/components/compliance-chatbot"
+import { LawImpactDetector } from "@/components/law-impact-detector"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -23,12 +24,35 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuth, useUser, initiateAnonymousSignIn, initiateSignOut } from "@/firebase"
 
-type View = 'knowledge-base' | 'revision-drafter' | 'justification' | 'chatbot';
+type View = 'knowledge-base' | 'law-impact' | 'revision-drafter' | 'justification' | 'chatbot';
+
+// 개정안 추천 요청 데이터 타입
+interface RevisionRequest {
+  regulationId: string;
+  regulationName: string;
+  reason: string;
+  sourceArticle: string;
+  diff: string;
+}
 
 export default function ReguMateApp() {
   const [currentView, setCurrentView] = useState<View>('knowledge-base');
   const [privacyMode, setPrivacyMode] = useState(true);
   const [strictness, setStrictness] = useState(75);
+
+  // 디텍팅 → 개정안 추천 연결용 상태
+  const [revisionRequest, setRevisionRequest] = useState<RevisionRequest | null>(null);
+
+  // 개정안 추천 요청 핸들러
+  const handleRequestRevision = (data: RevisionRequest) => {
+    setRevisionRequest(data);
+    setCurrentView('revision-drafter');
+  };
+
+  // 개정안 추천 완료 후 초기화
+  const handleRevisionComplete = () => {
+    setRevisionRequest(null);
+  };
   
   const auth = useAuth();
   const { user, isUserLoading, userError } = useUser();
@@ -85,6 +109,7 @@ export default function ReguMateApp() {
 
   const navItems = [
     { id: 'knowledge-base', icon: <Book className="w-5 h-5" />, label: '규정 라이브러리' },
+    { id: 'law-impact', icon: <Scale className="w-5 h-5" />, label: '법령 영향 스캔' },
     { id: 'revision-drafter', icon: <PenTool className="w-5 h-5" />, label: '개정안 추천' },
     { id: 'justification', icon: <FileSearch className="w-5 h-5" />, label: '개정 근거 추출' },
     { id: 'chatbot', icon: <MessageSquare className="w-5 h-5" />, label: '컴플라이언스 챗봇' },
@@ -92,6 +117,7 @@ export default function ReguMateApp() {
 
   const viewTitles: Record<View, string> = {
     'knowledge-base': '규정 라이브러리',
+    'law-impact': '법령 영향 스캔',
     'revision-drafter': '개정안 추천 서비스',
     'justification': '개정 근거 추출',
     'chatbot': '컴플라이언스 챗봇'
@@ -269,7 +295,13 @@ export default function ReguMateApp() {
         <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
           <div className="max-w-7xl mx-auto h-full">
             {currentView === 'knowledge-base' && <KnowledgeBase />}
-            {currentView === 'revision-drafter' && <RevisionDrafter />}
+            {currentView === 'law-impact' && <LawImpactDetector onRequestRevision={handleRequestRevision} />}
+            {currentView === 'revision-drafter' && (
+              <RevisionDrafter
+                initialRequest={revisionRequest}
+                onComplete={handleRevisionComplete}
+              />
+            )}
             {currentView === 'justification' && <JustificationExtractor />}
             {currentView === 'chatbot' && <ComplianceChatbot strictness={strictness} />}
           </div>

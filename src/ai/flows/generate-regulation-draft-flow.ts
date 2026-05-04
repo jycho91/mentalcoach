@@ -19,6 +19,8 @@ const ComparisonItemSchema = z.object({
 const GenerateRegulationDraftInputSchema = z.object({
   newLawDirective: z.string().describe('The text of the new legal requirement or internal directive that necessitates a regulation revision.'),
   existingRegulationContent: z.string().optional().describe('The current content of the existing company regulation that needs to be revised.'),
+  previousDraft: z.string().optional().describe('The previous version of the draft revision, if this is an upgrade request.'),
+  upgradeRequest: z.string().optional().describe('Additional requirements or feedback for upgrading the previous draft.'),
 });
 export type GenerateRegulationDraftInput = z.infer<typeof GenerateRegulationDraftInputSchema>;
 
@@ -48,7 +50,7 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateRegulationDraftOutputSchema},
   prompt: `You are an expert compliance officer. Your task is to generate a 'Before vs. After' comparison for a regulation revision based on a new directive.
 
-Instead of the full text, focus ONLY on the sections that need to be changed or added. 
+Instead of the full text, focus ONLY on the sections that need to be changed or added.
 Identify the specific articles or sections from the existing content that are affected.
 
 --- Start of Context ---
@@ -59,13 +61,34 @@ New Law/Directive:
 Existing Regulation Content (for context):
 {{{existingRegulationContent}}}
 {{/if}}
+
+{{#if previousDraft}}
+--- Previous Draft Version ---
+The following is the previous version of the draft that needs to be upgraded:
+{{{previousDraft}}}
+
+{{#if upgradeRequest}}
+User's Upgrade Request:
+{{{upgradeRequest}}}
+{{/if}}
+
+IMPORTANT: This is an UPGRADE request. You must:
+1. Use the previous draft as the base
+2. Apply the user's upgrade request to improve it
+3. Keep the good parts from the previous draft
+4. Only modify what the upgrade request asks for
+--- End of Previous Draft ---
+{{/if}}
 --- End of Context ---
 
 Instructions for output:
-1.  **comparisonTable**: 
+1.  **comparisonTable**:
     - Identify which sections/articles need modification.
     - If a section is NEW, put "N/A (신설)" in the 'before' field.
     - If a section is modified, provide the exact original text (if available in context) in 'before' and the revised version in 'after'.
+{{#if previousDraft}}
+    - For upgrades: 'before' should be the previous draft version, 'after' should be the upgraded version.
+{{/if}}
 2.  **summaryOfChanges**: Summarize the core impact.
 3.  **rationale**: Explain the legal or internal basis for these specific changes.
 
