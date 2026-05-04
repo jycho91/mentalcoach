@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Scale, Scan, AlertTriangle, AlertCircle, Info, Loader2, FileText, Sparkles, History, Clock, ChevronRight, PenTool, Trash2 } from "lucide-react"
+import { Scale, Scan, AlertTriangle, AlertCircle, Info, Loader2, FileText, Sparkles, History, Clock, ChevronRight, PenTool, Trash2, Bot } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { detectLawImpact, type DetectLawImpactOutput } from "@/ai/flows/detect-law-impact-flow"
+import { autoComplianceScan } from "@/ai/flows/auto-compliance-scan-flow"
 import { SAMPLE_LAWS } from "@/lib/sample-law"
 import { useFirestore, useCollection, useUser, useMemoFirebase, addDocument } from "@/firebase"
 import { collection, doc, deleteDoc } from "firebase/firestore"
@@ -166,6 +167,61 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
     handleScan(sample.fullText, sample.name);
   };
 
+  // AI 자동 법령 스캔 (법령 입력 없이 AI가 알아서 분석)
+  const handleAutoScan = async () => {
+    if (!regulations || regulations.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "규정 없음",
+        description: "라이브러리에 규정을 먼저 등록해주세요."
+      });
+      return;
+    }
+
+    setLoading(true);
+    setResult(null);
+    setSelectedScan(null);
+    setLawText("");
+    setLawName("AI 자동 법령 스캔");
+
+    try {
+      const output = await autoComplianceScan({
+        regulations: regulations.map(r => ({
+          id: r.id,
+          fileName: r.fileName,
+          content: r.content
+        }))
+      });
+
+      // 출력 형식을 기존 DetectLawImpactOutput과 맞춤
+      const formattedResult: DetectLawImpactOutput = {
+        impactedRegulations: output.impactedRegulations,
+        summary: output.summary,
+        scanTimestamp: output.scanTimestamp
+      };
+
+      setResult(formattedResult);
+
+      // 결과 저장
+      await saveScanResult(formattedResult, "AI 자동 법령 스캔", "AI 자동 법령 스캔");
+
+      toast({
+        title: "AI 스캔 완료",
+        description: `${output.impactedRegulations.length}개의 개정 필요 규정이 발견되었습니다.`
+      });
+    } catch (error: any) {
+      console.error("Auto Compliance Scan Error:", error);
+      setResult(null);
+      toast({
+        variant: "destructive",
+        title: "스캔 실패",
+        description: error.message || "AI 법령 스캔 중 오류가 발생했습니다."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 이력에서 스캔 선택
   const handleSelectScan = (scan: LawImpactScan & { id: string }) => {
     setSelectedScan(scan);
@@ -305,16 +361,28 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
             <CardHeader className="pb-3 border-b bg-slate-50/50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-slate-700">법령 텍스트 입력</CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSampleScan}
-                  disabled={loading}
-                  className="h-8 text-xs font-bold"
-                >
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  샘플 법령으로 스캔
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSampleScan}
+                    disabled={loading}
+                    className="h-8 text-xs font-bold"
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    샘플 법령으로 스캔
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleAutoScan}
+                    disabled={loading}
+                    className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    <Bot className="w-3 h-3 mr-1" />
+                    AI 법령 스캔
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
