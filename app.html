@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RegulMate | 컴플라이언스 워크플로우 데모</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar">
+      <a class="sidebar-brand" href="index.html">
+        <span class="brand-mark">R</span>
+        <div>
+          <div class="brand-name">레귤메이트</div>
+          <div class="brand-sub">RegulMate</div>
+        </div>
+      </a>
+
+      <nav class="sidebar-nav" aria-label="메인 메뉴">
+        <button class="nav-item active" data-goto="dashboard">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 8a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1v-4zm8-8a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V4zm0 8a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
+          <span>대시보드</span>
+        </button>
+        <button class="nav-item" data-goto="analysis" id="nav-analysis">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <span>영향 분석</span>
+          <span class="nav-badge" id="analysis-badge" style="display:none"></span>
+        </button>
+        <button class="nav-item" data-goto="package" id="nav-package">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a2 2 0 00-2 2v1H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2V4a2 2 0 00-2-2H9zm0 2h2v1H9V4zm-4 5h10v8H5V9z"/></svg>
+          <span>개정 패키지</span>
+          <span class="nav-badge" id="package-badge" style="display:none"></span>
+        </button>
+      </nav>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-footer">
+        <div class="company-info">
+          <div class="company-name">테크솔루션 주식회사</div>
+          <div class="company-role">준법지원팀</div>
+        </div>
+        <div class="demo-pill">DEMO</div>
+      </div>
+    </aside>
+
+    <!-- ── Main ── -->
+    <div class="main-wrap">
+      <header class="topbar">
+        <nav class="breadcrumb" id="breadcrumb" aria-label="탐색 경로">
+          <span>대시보드</span>
+        </nav>
+        <div class="topbar-right">
+          <span class="topbar-date" id="topbar-date"></span>
+          <div class="topbar-avatar" aria-label="사용자 메뉴">관</div>
+        </div>
+      </header>
+
+      <main class="main-content">
+
+        <!-- ══════════════════════════════
+             VIEW: DASHBOARD
+        ══════════════════════════════ -->
+        <div id="view-dashboard" class="view active">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">컴플라이언스 현황</h1>
+              <p class="page-sub">실시간 법령 모니터링 및 영향 분석 — 데모 데이터 기준</p>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-detected">3</div>
+              <div class="stat-label">감지된 법령 변경</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-affected">8</div>
+              <div class="stat-label">영향받는 사내 규정</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value warning" id="stat-pending">3</div>
+              <div class="stat-label">개정 검토 대기</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value success" id="stat-done">0</div>
+              <div class="stat-label">개정 완료</div>
+            </div>
+          </div>
+
+          <!-- Alert banner -->
+          <div class="alert-banner">
+            <svg viewBox="0 0 20 20" fill="currentColor" class="alert-icon"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+            <span>최근 30일간 <strong>3건</strong>의 법령 개정이 감지되었습니다. 영향 분석을 시작하세요.</span>
+          </div>
+
+          <!-- Regulation list -->
+          <div class="section-title">감지된 법령 변경</div>
+          <div class="reg-list" id="reg-list"></div>
+        </div>
+
+        <!-- ══════════════════════════════
+             VIEW: ANALYSIS
+        ══════════════════════════════ -->
+        <div id="view-analysis" class="view">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title" id="analysis-title">영향 분석</h1>
+              <p class="page-sub" id="analysis-sub">해당 법령 개정이 사내 규정에 미치는 영향을 검토하세요.</p>
+            </div>
+          </div>
+
+          <!-- Law summary card -->
+          <div class="law-card" id="law-card"></div>
+
+          <!-- Affected policies -->
+          <div class="section-title">영향받는 사내 규정 <span class="section-hint">개정할 규정을 선택하세요</span></div>
+          <div id="policy-list" class="policy-list"></div>
+
+          <!-- Domino effect teaser -->
+          <details class="domino-section">
+            <summary class="domino-summary">
+              <svg viewBox="0 0 20 20" fill="currentColor" class="domino-icon"><path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clip-rule="evenodd"/></svg>
+              <span>연쇄 영향 감지 (도미노 체크)</span>
+              <span class="domino-tag">BETA</span>
+            </summary>
+            <div class="domino-body" id="domino-body"></div>
+          </details>
+
+          <div class="analysis-actions">
+            <button class="btn btn-outline" onclick="goTo('dashboard')">← 대시보드로</button>
+            <button class="btn btn-primary" id="gen-package-btn" onclick="startPackageGeneration()">
+              <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd"/></svg>
+              개정 패키지 생성
+            </button>
+          </div>
+        </div>
+
+        <!-- ══════════════════════════════
+             VIEW: PACKAGE
+        ══════════════════════════════ -->
+        <div id="view-package" class="view">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">개정 패키지</h1>
+              <p class="page-sub" id="package-sub">AI 생성 개정안 — 검토 후 결재 요청하세요</p>
+            </div>
+            <div class="package-actions-top" id="package-actions-top" style="display:none">
+              <button class="btn btn-outline" onclick="mockExport('word')">📄 Word 내보내기</button>
+              <button class="btn btn-primary" onclick="mockExport('approval')">결재 요청 →</button>
+            </div>
+          </div>
+
+          <!-- Loading state -->
+          <div id="pkg-loading" class="pkg-loading">
+            <div class="loading-ring"></div>
+            <div class="loading-title">AI가 개정 패키지를 작성 중입니다</div>
+            <div class="loading-steps" id="loading-steps">
+              <div class="loading-step active" id="ls-1">📡 관련 법령 및 판례 검색 중…</div>
+              <div class="loading-step" id="ls-2">📋 영향 조항 분석 중…</div>
+              <div class="loading-step" id="ls-3">✍️ 개정 초안 작성 중…</div>
+              <div class="loading-step" id="ls-4">⚖️ 신구조문대비표 생성 중…</div>
+            </div>
+          </div>
+
+          <!-- Package content -->
+          <div id="pkg-content" style="display:none"></div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" aria-live="polite"></div>
+
+  <!-- Chat widget -->
+  <div class="chat-widget-wrap" id="chat-wrap">
+    <div class="chat-panel" id="chat-panel">
+      <div class="chat-header">
+        <span>💬 RegulMate 어시스턴트</span>
+        <button class="chat-close" onclick="toggleChat()" aria-label="닫기">✕</button>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-msg bot">안녕하세요! 컴플라이언스 관련 질문을 도와드립니다. <br>예: "근로기준법 52시간 규제가 우리 회사에 미치는 영향은?"</div>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" class="chat-input" id="chat-input" placeholder="질문을 입력하세요…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send" onclick="sendChat()">→</button>
+      </div>
+    </div>
+    <button class="chat-fab" onclick="toggleChat()" aria-label="AI 어시스턴트 열기">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    </button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
