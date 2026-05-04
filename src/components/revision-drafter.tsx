@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Wand2, ArrowRight, CheckCircle2, BookOpen, FileDiff, Info, Loader2, Scale, History, Clock, ChevronRight, RefreshCw } from "lucide-react"
+import { Wand2, ArrowRight, CheckCircle2, BookOpen, FileDiff, Info, Loader2, Scale, History, Clock, ChevronRight, RefreshCw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table"
 import { generateRegulationDraft, type GenerateRegulationDraftOutput } from "@/ai/flows/generate-regulation-draft-flow"
 import { useFirestore, useCollection, useUser, useMemoFirebase, addDocument } from "@/firebase"
-import { collection, doc, updateDoc } from "firebase/firestore"
+import { collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 
 // 디텍팅에서 전달받는 요청 데이터 타입
@@ -321,6 +321,41 @@ ${initialRequest.diff}`;
     });
   };
 
+  // 개정안 이력 삭제
+  const handleDeleteDraft = async (draftId: string) => {
+    if (!user) return;
+
+    try {
+      const docRef = doc(db, `users/${user.uid}/revisionDrafts`, draftId);
+      await deleteDoc(docRef);
+
+      // 삭제한 개정안이 현재 선택된 것이면 선택 해제
+      if (selectedDraft?.id === draftId) {
+        setSelectedDraft(null);
+      }
+
+      // 삭제한 개정안이 현재 작업 중인 것이면 초기화
+      if (currentDraftId === draftId) {
+        setCurrentDraftId(null);
+        setCurrentIterations([]);
+        setResult(null);
+        setDisplayVersion(1);
+      }
+
+      toast({
+        title: "삭제 완료",
+        description: "개정안 이력이 삭제되었습니다."
+      });
+    } catch (error) {
+      console.error("Failed to delete draft:", error);
+      toast({
+        variant: "destructive",
+        title: "삭제 실패",
+        description: "개정안 이력 삭제 중 오류가 발생했습니다."
+      });
+    }
+  };
+
   // 날짜 포맷
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -602,7 +637,20 @@ ${initialRequest.diff}`;
                         <span className="font-medium text-slate-800 truncate">
                           {draft.regulationName}
                         </span>
-                        <Badge variant="secondary">v{draft.iterations.length}</Badge>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="secondary">v{draft.iterations.length}</Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteDraft(draft.id);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="flex items-center space-x-2 text-xs text-slate-500">
                         <Clock className="w-3 h-3" />
@@ -624,13 +672,23 @@ ${initialRequest.diff}`;
                           {selectedDraft.iterations.length}개 버전 | 마지막 수정: {formatDate(selectedDraft.updatedAt)}
                         </p>
                       </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleContinueFromHistory(selectedDraft)}
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        작업 이어가기
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleContinueFromHistory(selectedDraft)}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          작업 이어가기
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-200"
+                          onClick={() => handleDeleteDraft(selectedDraft.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          삭제
+                        </Button>
+                      </div>
                     </div>
 
                     {/* 버전 선택 */}

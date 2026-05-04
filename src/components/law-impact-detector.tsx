@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Scale, Scan, AlertTriangle, AlertCircle, Info, Loader2, FileText, Sparkles, History, Clock, ChevronRight, PenTool } from "lucide-react"
+import { Scale, Scan, AlertTriangle, AlertCircle, Info, Loader2, FileText, Sparkles, History, Clock, ChevronRight, PenTool, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { detectLawImpact, type DetectLawImpactOutput } from "@/ai/flows/detect-law-impact-flow"
 import { SAMPLE_LAWS } from "@/lib/sample-law"
 import { useFirestore, useCollection, useUser, useMemoFirebase, addDocument } from "@/firebase"
-import { collection } from "firebase/firestore"
+import { collection, doc, deleteDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 
 // 개정안 추천 요청 데이터 타입
@@ -170,6 +170,34 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
   const handleSelectScan = (scan: LawImpactScan & { id: string }) => {
     setSelectedScan(scan);
     setResult(null);
+  };
+
+  // 스캔 이력 삭제
+  const handleDeleteScan = async (scanId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // 카드 클릭 이벤트 방지
+    if (!user) return;
+
+    try {
+      const docRef = doc(db, `users/${user.uid}/lawImpactScans`, scanId);
+      await deleteDoc(docRef);
+
+      // 삭제한 스캔이 현재 선택된 것이면 선택 해제
+      if (selectedScan?.id === scanId) {
+        setSelectedScan(null);
+      }
+
+      toast({
+        title: "삭제 완료",
+        description: "스캔 이력이 삭제되었습니다."
+      });
+    } catch (error) {
+      console.error("Failed to delete scan:", error);
+      toast({
+        variant: "destructive",
+        title: "삭제 실패",
+        description: "스캔 이력 삭제 중 오류가 발생했습니다."
+      });
+    }
   };
 
   // 영향도별 배지 색상
@@ -343,6 +371,14 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
                         <Badge variant={scan.impactedCount > 0 ? "default" : "secondary"}>
                           영향 {scan.impactedCount}건
                         </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50"
+                          onClick={(e) => handleDeleteScan(scan.id, e)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                         <ChevronRight className="w-4 h-4 text-slate-400" />
                       </div>
                     </div>
