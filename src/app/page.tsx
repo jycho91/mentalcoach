@@ -111,8 +111,8 @@ export default function ReguMateApp() {
     { id: 'knowledge-base', icon: <Book className="w-5 h-5" />, label: '규정 라이브러리' },
     { id: 'law-impact', icon: <Scale className="w-5 h-5" />, label: '법령 영향 스캔' },
     { id: 'revision-drafter', icon: <PenTool className="w-5 h-5" />, label: '개정안 추천' },
-    { id: 'justification', icon: <FileSearch className="w-5 h-5" />, label: '개정 근거 추출' },
     { id: 'chatbot', icon: <MessageSquare className="w-5 h-5" />, label: '컴플라이언스 챗봇' },
+    { id: 'justification', icon: <FileSearch className="w-5 h-5" />, label: '개정 근거 추출' },
   ];
 
   const viewTitles: Record<View, string> = {

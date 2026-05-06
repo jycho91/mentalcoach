@@ -42,7 +42,7 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
       setMessages([
         { 
           role: 'ai', 
-          text: `안녕하세요! ReguMate 수석 컴플라이언스 분석관입니다. 현재 라이브러리에 등록된 ${regCount}개의 모든 규정을 심층 분석하여, 조항 개정 시 발생할 수 있는 위임전결 리스크와 타 규정과의 정합성을 정밀 진단해 드립니다.` 
+          text: `안녕하세요! ReguMate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!` 
         }
       ]);
     }
@@ -162,14 +162,14 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
             <ShieldCheck className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h3 className="font-headline font-bold text-xl tracking-tight">수석 컴플라이언스 감사관</h3>
+            <h3 className="font-headline font-bold text-xl tracking-tight">컴플라이언스 어시스턴트</h3>
             <div className="flex items-center space-x-2">
               <span className="flex h-2 w-2 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
               <p className="text-xs text-slate-400 font-medium">
-                {isDbLoading ? '규정 데이터 로드 중...' : `${regCount}개 규정 전수 대조 및 상호 영향 분석 중`}
+                {isDbLoading ? '규정 데이터 로드 중...' : `${regCount}개 규정 기반 답변 준비 완료`}
               </p>
             </div>
           </div>
@@ -209,7 +209,7 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
                     <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl space-y-2 animate-in zoom-in-95 duration-500">
                       <div className="flex items-center space-x-2 text-amber-700">
                         <Zap className="w-3.5 h-3.5 fill-amber-500" />
-                        <span className="text-xs font-bold uppercase tracking-wider">감사관의 심층 리스크 진단</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">관련 규정 연관성 분석</span>
                       </div>
                       <p className="text-xs text-amber-800 leading-relaxed font-medium">
                         {msg.crossImpact}
@@ -243,7 +243,7 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
                     <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                     <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
                   </div>
-                  <span className="text-sm text-slate-500 font-semibold tracking-tight">전체 {regCount}개 규정을 대조하여 위임전결 충돌 및 절차적 누락 리스크를 심층 분석 중입니다...</span>
+                  <span className="text-sm text-slate-500 font-semibold tracking-tight">등록된 규정들을 분석하여 답변을 준비하고 있습니다...</span>
                 </div>
               </div>
             </div>
@@ -260,7 +260,7 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
         >
           <div className="flex-1 relative group">
             <Input 
-              placeholder="예: 회계규정 61조를 개정하면 위임전결요령의 어떤 조항을 함께 손봐야 하나요?"
+              placeholder="예: 육아휴직 관련 규정이 뭐가 있어? / 출장비 정산 절차 알려줘"
               className="w-full pl-6 pr-14 py-8 bg-slate-50 border-slate-200 rounded-2xl focus-visible:ring-primary focus-visible:ring-offset-2 text-base transition-all group-hover:bg-white group-hover:shadow-md"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -276,9 +276,9 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
           </Button>
         </form>
         <div className="mt-4 flex items-center justify-center space-x-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-          <span className="flex items-center"><Zap className="w-3 h-3 mr-1 text-amber-500" /> 라이브러리 연동 전수 대조 분석 모드</span>
+          <span className="flex items-center"><Zap className="w-3 h-3 mr-1 text-amber-500" /> 규정 라이브러리 연동</span>
           <span className="w-1 h-1 bg-slate-300 rounded-full" />
-          <span>규정 간 상호 의존성 정밀 추론</span>
+          <span>AI 기반 규정 검색 및 분석</span>
         </div>
       </div>
     </div>
