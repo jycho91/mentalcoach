@@ -27,15 +27,19 @@ service cloud.firestore {
 
     /**
      * @description 공유 규정 라이브러리.
-     * 읽기는 인증된 모든 사용자. 생성은 본인 uid를 uploadedByUserId에 기록할 때만.
-     * 수정/삭제는 최초 업로더(uploadedByUserId)만 가능.
+     * 읽기: 인증된 모든 사용자
+     * 생성: 인증된 사용자가 본인 uid를 uploadedByUserId에 기록할 때만
+     * 수정: 본인이 업로드한 규정만
+     * 삭제: UI에서는 차단. 관리자가 Firebase 콘솔에서만 직접 삭제 가능.
+     *      (실수 삭제 방지 + 익명 인증 uid 불일치 문제 회피)
      */
     match /regulations/{regulationId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
                     && request.resource.data.uploadedByUserId == request.auth.uid;
-      allow update, delete: if isSignedIn()
-                            && resource.data.uploadedByUserId == request.auth.uid;
+      allow update: if isSignedIn()
+                    && resource.data.uploadedByUserId == request.auth.uid;
+      allow delete: if false;
     }
 
     /**

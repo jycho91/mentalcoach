@@ -215,17 +215,11 @@ export function KnowledgeBase() {
         title: "삭제 완료",
         description: `${succeeded}개의 규정이 라이브러리에서 제거되었습니다.`,
       });
-    } else if (succeeded === 0) {
-      toast({
-        variant: "destructive",
-        title: "삭제 실패",
-        description: "본인이 등록한 규정만 삭제할 수 있습니다.",
-      });
     } else {
       toast({
         variant: "destructive",
-        title: "일부 삭제 실패",
-        description: `${succeeded}개 성공, ${failed}개 실패 (본인 소유 규정만 삭제 가능).`,
+        title: "삭제 불가",
+        description: "규정 삭제는 시스템 관리자만 처리할 수 있습니다. 삭제가 필요하시면 관리자에게 문의해 주세요.",
       });
     }
   };
