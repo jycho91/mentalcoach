@@ -169,7 +169,7 @@ export default function ReguMateApp() {
             <div className="space-y-4 px-2">
               <div className="flex items-center space-x-2 mb-3">
                 <Sliders className="w-4 h-4 text-primary" />
-                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">검색 정확도 설정</h3>
+                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">챗봇 정확도 설정</h3>
               </div>
               <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 backdrop-blur-sm space-y-4">
                 <div className="flex justify-between items-center">

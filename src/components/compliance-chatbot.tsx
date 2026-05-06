@@ -114,8 +114,8 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
         : topRegulations;
 
       const knowledgeBaseSnippets = finalSelection.map(reg => {
-        // AI가 읽을 수 있도록 각 문서의 핵심 내용을 8000자 내외로 추출
-        const truncatedContent = reg.content?.substring(0, 8000) || "";
+        // AI가 읽을 수 있도록 각 문서의 핵심 내용 추출 (20000자로 확장)
+        const truncatedContent = reg.content?.substring(0, 20000) || "";
         return `[문서명: ${reg.fileName}]\n${truncatedContent}\n---`;
       });
 
