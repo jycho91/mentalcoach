@@ -98,8 +98,10 @@ export function RevisionDrafter({ initialRequest, onComplete }: RevisionDrafterP
   const { data: draftHistory } = useCollection<RevisionDraft>(draftsRef);
 
   // 디텍팅에서 전달받은 데이터로 자동 입력
+  // regulations 로딩과 무관하게 initialRequest 들어오는 즉시 선택해야 함.
+  // (이전엔 && regulations 조건 때문에 첫 클릭이 자주 누락됨)
   useEffect(() => {
-    if (initialRequest && regulations) {
+    if (initialRequest) {
       setSelectedRegId(initialRequest.regulationId);
 
       const autoDirective = `[법령 영향 분석 결과에 따른 개정 요청]
@@ -122,7 +124,7 @@ ${initialRequest.diff}`;
       setDisplayVersion(1);
       setActiveTab("new");
     }
-  }, [initialRequest, regulations]);
+  }, [initialRequest]);
 
   // 개정안 저장
   const saveDraft = async (output: GenerateRegulationDraftOutput, isUpgrade: boolean) => {
