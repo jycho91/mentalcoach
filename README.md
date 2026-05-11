@@ -1,6 +1,13 @@
 # RegulMate (formerly mentalcoach)
 
+> 🚀 **데모 배포**: https://regulmate.vercel.app
+
 이 프로젝트는 mentalcoach(마음코치)에서 **RegulMate(레귤메이트)** 로 피봇되었습니다.
+
+## 📌 현재 진행 상황
+- 팀원 각자 브랜치에서 [MANIFESTO](./MANIFESTO.md) 기반으로 개발 진행 중
+- 현재 시점에서 **가장 완성도 높은 버전을 데모데이에서 시연 예정**
+- 시연 후 피드백 반영하여 추가 개발 예정
 
 ## 새로운 방향
 - **RegulMate**: 사내 규정 컴플라이언스 자동화 SaaS
