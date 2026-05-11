@@ -15,7 +15,7 @@
 
 ## 코드 위치
 - **최신 RegulMate 코드**: [`feature/regulmate-pivot`](https://github.com/jycho91/mentalcoach/tree/feature/regulmate-pivot) 브랜치
-- **기존 mentalcoach 코드**: `archive/mentalcoach/` 폴더에 보존
+- **기존 mentalcoach 코드**: [`archive/mentalcoach`](https://github.com/jycho91/mentalcoach/tree/archive/mentalcoach) 브랜치에 보존
 
 ## 기획 문서
 
