@@ -35,7 +35,7 @@ interface RevisionRequest {
   diff: string;
 }
 
-export default function ReguMateApp() {
+export default function RegulmateApp() {
   const [currentView, setCurrentView] = useState<View>('knowledge-base');
   const [privacyMode, setPrivacyMode] = useState(true);
   const [strictness, setStrictness] = useState(75);
@@ -134,7 +134,7 @@ export default function ReguMateApp() {
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center mr-3 shadow-lg shadow-primary/20">
               <Shield className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-headline font-bold tracking-tight text-white">ReguMate</span>
+            <span className="text-2xl font-headline font-bold tracking-tight text-white">Regulmate</span>
           </div>
 
           {/* Navigation */}

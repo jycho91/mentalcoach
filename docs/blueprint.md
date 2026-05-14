@@ -1,4 +1,4 @@
-# **App Name**: ReguMate
+# **App Name**: Regulmate
 
 ## Core Features:
 

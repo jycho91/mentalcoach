@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * ReguMate Security Rules
+     * Regulmate Security Rules
      * 
      * 프로토타입 단계의 원활한 테스트를 위해 규정(Regulations) 컬렉션은
      * 로그인한 모든 사용자에게 완전한 관리 권한을 부여합니다.
