@@ -42,7 +42,7 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
       setMessages([
         { 
           role: 'ai', 
-          text: `안녕하세요! Regulmate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!` 
+          text: `안녕하세요! RegulMate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!` 
         }
       ]);
     }

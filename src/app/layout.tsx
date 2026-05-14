@@ -6,7 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthErrorListener } from '@/components/AuthErrorListener';
 
 export const metadata: Metadata = {
-  title: 'Regulmate | AI 기반 컴플라이언스 관리',
+  title: 'RegulMate | AI 기반 컴플라이언스 관리',
   description: 'GenAI를 통한 기업 규정 및 정책 관리의 간소화.',
 };
 

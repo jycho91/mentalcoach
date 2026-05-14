@@ -5,7 +5,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Stores user-specific settings and preferences for the Regulmate application. Authentication is assumed to be handled by an external system.",
+      "description": "Stores user-specific settings and preferences for the RegulMate application. Authentication is assumed to be handled by an external system.",
       "properties": {
         "id": {
           "type": "string",
@@ -41,7 +41,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Regulation",
       "type": "object",
-      "description": "Represents a single enterprise regulation or policy document stored in the Regulmate knowledge base.",
+      "description": "Represents a single enterprise regulation or policy document stored in the RegulMate knowledge base.",
       "properties": {
         "id": {
           "type": "string",

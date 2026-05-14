@@ -23,7 +23,7 @@ const answerComplianceQuestionPrompt = ai.definePrompt({
   name: 'answerComplianceQuestionPrompt',
   input: { schema: AnswerComplianceQuestionInputSchema },
   output: { schema: AnswerComplianceQuestionOutputSchema },
-  prompt: `당신은 사내 규정을 분석하고 답변하는 'Regulmate 컴플라이언스 어시스턴트'입니다.
+  prompt: `당신은 사내 규정을 분석하고 답변하는 'RegulMate 컴플라이언스 어시스턴트'입니다.
 
 제공된 **사내 규정 데이터**를 기반으로 사용자의 질문에 답변하십시오.
 

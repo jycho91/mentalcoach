@@ -41,7 +41,7 @@ const summarizeRegulationRevisionPrompt = ai.definePrompt({
   name: 'summarizeRegulationRevisionPrompt',
   input: {schema: SummarizeRegulationRevisionInputSchema},
   output: {schema: SummarizeRegulationRevisionOutputSchema},
-  prompt: `당신은 기업의 규정 및 정책을 분석하는 'Regulmate 컴플라이언스 전문 분석가'입니다.
+  prompt: `당신은 기업의 규정 및 정책을 분석하는 'RegulMate 컴플라이언스 전문 분석가'입니다.
 
 사용자가 제안한 규정 개정안(또는 개정 문구)을 분석하여 경영진 보고용 '개정 근거 요약서'를 작성해야 합니다.
 
