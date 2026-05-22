@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * RegulMate Security Rules
+     * 
+     * 프로토타입 단계의 원활한 테스트를 위해 규정(Regulations) 컬렉션은
+     * 로그인한 모든 사용자에게 완전한 관리 권한을 부여합니다.
+     */
+
+    // --- Helper Functions ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description 공유 규정 라이브러리.
+     * 읽기: 인증된 모든 사용자
+     * 생성: 인증된 사용자가 본인 uid를 uploadedByUserId에 기록할 때만
+     * 수정: 본인이 업로드한 규정만
+     * 삭제: UI에서는 차단. 관리자가 Firebase 콘솔에서만 직접 삭제 가능.
+     *      (실수 삭제 방지 + 익명 인증 uid 불일치 문제 회피)
+     */
+    match /regulations/{regulationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.uploadedByUserId == request.auth.uid;
+      allow update: if isSignedIn()
+                    && resource.data.uploadedByUserId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    /**
+     * @description 사용자 프로필. 본인 것만 관리 가능.
+     */
+    match /userProfiles/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description 개인 대화 기록.
+     */
+    match /users/{userId}/chatConversations/{conversationId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+
+      match /messages/{messageId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.conversationId == conversationId;
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+
+    /**
+     * @description 개정안 초안 및 근거 요약서.
+     */
+    match /users/{userId}/revisionDrafts/{revisionDraftId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    match /users/{userId}/justificationSummaries/{justificationSummaryId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description 법령 영향 스캔 결과.
+     */
+    match /users/{userId}/lawImpactScans/{scanId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
