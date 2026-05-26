@@ -4,6 +4,7 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthErrorListener } from '@/components/AuthErrorListener';
+import { SessionProvider } from '@/contexts/session-context';
 
 export const metadata: Metadata = {
   title: 'RegulMate | AI 기반 컴플라이언스 관리',
@@ -24,9 +25,11 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
-          <AuthErrorListener />
-          {children}
-          <Toaster />
+          <SessionProvider>
+            <AuthErrorListener />
+            {children}
+            <Toaster />
+          </SessionProvider>
         </FirebaseClientProvider>
       </body>
     </html>

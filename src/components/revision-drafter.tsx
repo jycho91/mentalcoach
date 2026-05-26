@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Wand2, ArrowRight, CheckCircle2, BookOpen, FileDiff, Info, Loader2, Scale, History, Clock, ChevronRight, RefreshCw, Trash2 } from "lucide-react"
+import { Wand2, ArrowRight, CheckCircle2, BookOpen, FileDiff, Info, Loader2, Scale, History, Clock, ChevronRight, RefreshCw, Trash2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,11 +23,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { generateRegulationDraft, type GenerateRegulationDraftOutput } from "@/ai/flows/generate-regulation-draft-flow"
-import { useFirestore, useCollection, useUser, useMemoFirebase, addDocument } from "@/firebase"
-import { collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { useSession, type SessionDraft, type DraftIteration } from "@/contexts/session-context"
 import { useToast } from "@/hooks/use-toast"
 
-// 디텍팅에서 전달받는 요청 데이터 타입
 interface RevisionRequest {
   regulationId: string;
   regulationName: string;
@@ -41,30 +39,10 @@ interface RevisionDrafterProps {
   onComplete?: () => void;
 }
 
-// 개정안 버전 (iteration) 타입
-interface DraftIteration {
-  version: number;
-  userInput: string;
-  draft: GenerateRegulationDraftOutput;
-  createdAt: string;
-}
-
-// Firestore 개정안 문서 타입
-interface RevisionDraft {
-  userId: string;
-  regulationId: string;
-  regulationName: string;
-  initialDirective: string;
-  scanId?: string;
-  iterations: DraftIteration[];
-  createdAt: string;
-  updatedAt: string;
-}
-
 export function RevisionDrafter({ initialRequest, onComplete }: RevisionDrafterProps) {
-  const db = useFirestore();
-  const { user } = useUser();
+  const { regulations, drafts: draftHistory, addDraft, updateDraft, deleteDraft } = useSession();
   const { toast } = useToast();
+
   const [directive, setDirective] = useState("고용노동부 지침: 2026년 4월 1일부터 모든 상시근로자 50인 이상 사업장은 월 1회 의무적으로 '직장 내 괴롭힘 예방 및 대처 심화 교육'을 2시간 이상 실시해야 하며, 이를 취업규칙에 명시해야 한다.");
   const [upgradeInput, setUpgradeInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,38 +50,17 @@ export function RevisionDrafter({ initialRequest, onComplete }: RevisionDrafterP
   const [selectedRegId, setSelectedRegId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("new");
 
-  // 현재 작업 중인 개정안의 iterations
   const [currentIterations, setCurrentIterations] = useState<DraftIteration[]>([]);
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
-  // 현재 표시 중인 버전 (버전 전환용)
   const [displayVersion, setDisplayVersion] = useState<number>(1);
 
-  // 이력에서 선택한 개정안
-  const [selectedDraft, setSelectedDraft] = useState<(RevisionDraft & { id: string }) | null>(null);
+  const [selectedDraft, setSelectedDraft] = useState<(SessionDraft) | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
 
-  const regulationsRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(db, "regulations");
-  }, [db, user]);
-
-  const { data: regulations } = useCollection(regulationsRef);
-
-  // 개정안 이력 구독
-  const draftsRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(db, `users/${user.uid}/revisionDrafts`);
-  }, [db, user]);
-
-  const { data: draftHistory } = useCollection<RevisionDraft>(draftsRef);
-
   // 디텍팅에서 전달받은 데이터로 자동 입력
-  // regulations 로딩과 무관하게 initialRequest 들어오는 즉시 선택해야 함.
-  // (이전엔 && regulations 조건 때문에 첫 클릭이 자주 누락됨)
   useEffect(() => {
     if (initialRequest) {
       setSelectedRegId(initialRequest.regulationId);
-
       const autoDirective = `[법령 영향 분석 결과에 따른 개정 요청]
 
 개정 대상: ${initialRequest.regulationName}
@@ -126,15 +83,13 @@ ${initialRequest.diff}`;
     }
   }, [initialRequest]);
 
-  // 개정안 저장
-  const saveDraft = async (output: GenerateRegulationDraftOutput, isUpgrade: boolean) => {
-    if (!user || !draftsRef) return;
+  // ─── 세션 저장 ────────────────────────────────────────────────────────────
 
-    const regulation = regulations?.find(r => r.id === selectedRegId);
+  const saveDraft = (output: GenerateRegulationDraftOutput, isUpgrade: boolean) => {
+    const regulation = regulations.find(r => r.id === selectedRegId);
     const now = new Date().toISOString();
 
     if (isUpgrade && currentDraftId && currentIterations.length > 0) {
-      // 기존 문서에 iteration 추가 (updateDoc 사용)
       const newIteration: DraftIteration = {
         version: currentIterations.length + 1,
         userInput: upgradeInput,
@@ -143,20 +98,13 @@ ${initialRequest.diff}`;
       };
       const newIterations = [...currentIterations, newIteration];
       setCurrentIterations(newIterations);
-      setDisplayVersion(newIteration.version); // 새 버전으로 표시
+      setDisplayVersion(newIteration.version);
 
-      try {
-        // 기존 문서 업데이트
-        const docRef = doc(db, `users/${user.uid}/revisionDrafts`, currentDraftId);
-        await updateDoc(docRef, {
-          iterations: newIterations,
-          updatedAt: now,
-        });
-      } catch (error) {
-        console.error("Failed to update draft:", error);
-      }
+      updateDraft(currentDraftId, {
+        iterations: newIterations,
+        updatedAt: now,
+      });
     } else {
-      // 새 개정안 문서 생성
       const newIteration: DraftIteration = {
         version: 1,
         userInput: directive,
@@ -164,107 +112,68 @@ ${initialRequest.diff}`;
         createdAt: now,
       };
 
-      const draftData: RevisionDraft = {
-        userId: user.uid,
+      const newId = addDraft({
         regulationId: selectedRegId,
         regulationName: regulation?.fileName || "알 수 없음",
         initialDirective: directive,
         iterations: [newIteration],
         createdAt: now,
         updatedAt: now,
-      };
+      });
 
-      try {
-        const docRef = await addDocument(draftsRef, draftData);
-        setCurrentDraftId(docRef.id);
-        setCurrentIterations([newIteration]);
-        setDisplayVersion(1);
-      } catch (error) {
-        console.error("Failed to save draft:", error);
-      }
+      setCurrentDraftId(newId);
+      setCurrentIterations([newIteration]);
+      setDisplayVersion(1);
     }
   };
 
-  // 첫 개정안 생성
+  // ─── 첫 개정안 생성 ───────────────────────────────────────────────────────
+
   const handleGenerate = async () => {
     if (!directive.trim()) {
-      toast({
-        variant: "destructive",
-        title: "입력 부족",
-        description: "변경 지침 또는 요구사항을 입력해주세요."
-      });
+      toast({ variant: "destructive", title: "입력 부족", description: "변경 지침 또는 요구사항을 입력해주세요." });
       return;
     }
-
-    const baseRegulation = regulations?.find(r => r.id === selectedRegId);
+    const baseRegulation = regulations.find(r => r.id === selectedRegId);
     if (!baseRegulation) {
-      toast({
-        variant: "destructive",
-        title: "규정 미선택",
-        description: "개정 대상이 될 규정을 라이브러리에서 선택해주세요."
-      });
+      toast({ variant: "destructive", title: "규정 미선택", description: "개정 대상이 될 규정을 라이브러리에서 선택해주세요." });
       return;
     }
-
-    const contextContent = baseRegulation.content || "내용 없음";
 
     setLoading(true);
     setResult(null);
     try {
       const output = await generateRegulationDraft({
         newLawDirective: directive,
-        existingRegulationContent: contextContent
+        existingRegulationContent: baseRegulation.content || "내용 없음"
       });
       setResult(output);
-
-      // 저장
-      await saveDraft(output, false);
-
-      toast({
-        title: "분석 완료",
-        description: "개정안 v1이 생성되어 이력에 저장되었습니다."
-      });
-
-      if (initialRequest) {
-        onComplete?.();
-      }
+      saveDraft(output, false);
+      toast({ title: "분석 완료", description: "개정안 v1이 생성되어 이력에 저장되었습니다." });
+      if (initialRequest) onComplete?.();
     } catch (error: any) {
       console.error("Revision Drafter Generate Error:", error);
       setResult(null);
-      toast({
-        variant: "destructive",
-        title: "생성 실패",
-        description: error.message || "개정안을 분석하는 중 오류가 발생했습니다."
-      });
+      toast({ variant: "destructive", title: "생성 실패", description: error.message || "개정안을 분석하는 중 오류가 발생했습니다." });
     } finally {
       setLoading(false);
     }
   };
 
-  // 개정안 업그레이드
+  // ─── 개정안 업그레이드 ────────────────────────────────────────────────────
+
   const handleUpgrade = async () => {
     if (!upgradeInput.trim()) {
-      toast({
-        variant: "destructive",
-        title: "입력 부족",
-        description: "업그레이드 요구사항을 입력해주세요."
-      });
+      toast({ variant: "destructive", title: "입력 부족", description: "업그레이드 요구사항을 입력해주세요." });
       return;
     }
-
     if (currentIterations.length === 0 || !result) {
-      toast({
-        variant: "destructive",
-        title: "이전 버전 없음",
-        description: "먼저 개정안을 생성해주세요."
-      });
+      toast({ variant: "destructive", title: "이전 버전 없음", description: "먼저 개정안을 생성해주세요." });
       return;
     }
 
-    const baseRegulation = regulations?.find(r => r.id === selectedRegId);
+    const baseRegulation = regulations.find(r => r.id === selectedRegId);
     const contextContent = baseRegulation?.content || "내용 없음";
-
-    // 이전 버전의 draft를 문자열로 변환
     const previousDraftText = result.comparisonTable.map(item =>
       `${item.section}\n[개정 전] ${item.before}\n[개정 후] ${item.after}`
     ).join("\n\n");
@@ -278,36 +187,75 @@ ${initialRequest.diff}`;
         upgradeRequest: upgradeInput,
       });
       setResult(output);
-
-      // 저장
-      await saveDraft(output, true);
-
-      toast({
-        title: "업그레이드 완료",
-        description: `개정안 v${currentIterations.length + 1}이 생성되었습니다.`
-      });
-
+      saveDraft(output, true);
+      toast({ title: "업그레이드 완료", description: `개정안 v${currentIterations.length + 1}이 생성되었습니다.` });
       setUpgradeInput("");
     } catch (error: any) {
       console.error("Revision Upgrade Error:", error);
-      toast({
-        variant: "destructive",
-        title: "업그레이드 실패",
-        description: error.message || "개정안 업그레이드 중 오류가 발생했습니다."
-      });
+      toast({ variant: "destructive", title: "업그레이드 실패", description: error.message || "개정안 업그레이드 중 오류가 발생했습니다." });
     } finally {
       setLoading(false);
     }
   };
 
-  // 이력에서 개정안 선택
-  const handleSelectDraft = (draft: RevisionDraft & { id: string }) => {
+  // ─── 개정안 다운로드 (.txt) ───────────────────────────────────────────────
+
+  const handleDownload = (draftResult: GenerateRegulationDraftOutput, version: number, regName?: string) => {
+    const lines: string[] = [
+      "========================================",
+      "       RegulMate 개정안 추천 보고서",
+      "========================================",
+      `생성일: ${new Date().toLocaleDateString('ko-KR')}`,
+      `규정명: ${regName || regulations.find(r => r.id === selectedRegId)?.fileName || "알 수 없음"}`,
+      `버전: Draft v${version}`,
+      "",
+      "=== 신구조문 대비표 ===",
+      "",
+    ];
+
+    draftResult.comparisonTable.forEach(item => {
+      lines.push(`[${item.section}]`);
+      lines.push(`현행: ${item.before}`);
+      lines.push(`개정안: ${item.after}`);
+      lines.push("---");
+    });
+
+    lines.push("");
+    lines.push("=== 주요 변경 요약 ===");
+    draftResult.summaryOfChanges.forEach((change, i) => {
+      lines.push(`${i + 1}. ${change}`);
+    });
+
+    lines.push("");
+    lines.push("=== 개정 근거 (Rationale) ===");
+    lines.push(draftResult.rationale);
+    lines.push("");
+    lines.push("========================================");
+    lines.push("본 문서는 RegulMate AI가 생성한 초안입니다.");
+    lines.push("최종 검토 및 확정은 법무/컴플라이언스 담당자가 진행하세요.");
+    lines.push("========================================");
+
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `RegulMate_개정안_v${version}_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({ title: "다운로드 완료", description: `개정안 v${version}이 텍스트 파일로 저장되었습니다.` });
+  };
+
+  // ─── 이력 조작 ────────────────────────────────────────────────────────────
+
+  const handleSelectDraft = (draft: SessionDraft) => {
     setSelectedDraft(draft);
     setSelectedVersion(draft.iterations.length);
   };
 
-  // 이력에서 작업 이어가기
-  const handleContinueFromHistory = (draft: RevisionDraft & { id: string }) => {
+  const handleContinueFromHistory = (draft: SessionDraft) => {
     setSelectedRegId(draft.regulationId);
     setDirective(draft.initialDirective);
     setCurrentIterations(draft.iterations);
@@ -317,70 +265,37 @@ ${initialRequest.diff}`;
     setDisplayVersion(lastIteration.version);
     setActiveTab("new");
     setSelectedDraft(null);
-    toast({
-      title: "작업 이어가기",
-      description: `v${draft.iterations.length}에서 작업을 이어갑니다.`
-    });
+    toast({ title: "작업 이어가기", description: `v${draft.iterations.length}에서 작업을 이어갑니다.` });
   };
 
-  // 개정안 이력 삭제
-  const handleDeleteDraft = async (draftId: string) => {
-    if (!user) return;
-
-    try {
-      const docRef = doc(db, `users/${user.uid}/revisionDrafts`, draftId);
-      await deleteDoc(docRef);
-
-      // 삭제한 개정안이 현재 선택된 것이면 선택 해제
-      if (selectedDraft?.id === draftId) {
-        setSelectedDraft(null);
-      }
-
-      // 삭제한 개정안이 현재 작업 중인 것이면 초기화
-      if (currentDraftId === draftId) {
-        setCurrentDraftId(null);
-        setCurrentIterations([]);
-        setResult(null);
-        setDisplayVersion(1);
-      }
-
-      toast({
-        title: "삭제 완료",
-        description: "개정안 이력이 삭제되었습니다."
-      });
-    } catch (error) {
-      console.error("Failed to delete draft:", error);
-      toast({
-        variant: "destructive",
-        title: "삭제 실패",
-        description: "개정안 이력 삭제 중 오류가 발생했습니다."
-      });
+  const handleDeleteDraft = (draftId: string) => {
+    deleteDraft(draftId);
+    if (selectedDraft?.id === draftId) setSelectedDraft(null);
+    if (currentDraftId === draftId) {
+      setCurrentDraftId(null);
+      setCurrentIterations([]);
+      setResult(null);
+      setDisplayVersion(1);
     }
+    toast({ title: "삭제 완료", description: "개정안 이력이 삭제되었습니다." });
   };
 
-  // 날짜 포맷
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  // ─── 유틸 ─────────────────────────────────────────────────────────────────
+
+  const formatDate = (isoString: string) =>
+    new Date(isoString).toLocaleDateString('ko-KR', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     });
-  };
 
-  // 이력 정렬 (최신순)
-  const sortedHistory = draftHistory?.slice().sort((a, b) =>
+  const sortedHistory = [...draftHistory].sort((a, b) =>
     new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   );
 
-  // 선택된 이력의 표시할 버전
   const displayDraft = selectedDraft
     ? selectedDraft.iterations.find(i => i.version === selectedVersion)?.draft
     : null;
 
-  // 현재 버전 번호
   const currentVersion = currentIterations.length || 0;
 
   return (
@@ -405,12 +320,12 @@ ${initialRequest.diff}`;
               <SelectValue placeholder="라이브러리에서 선택..." />
             </SelectTrigger>
             <SelectContent>
-              {regulations?.map(reg => (
+              {regulations.map(reg => (
                 <SelectItem key={reg.id} value={reg.id} className="text-xs">
                   {reg.fileName}
                 </SelectItem>
               ))}
-              {(!regulations || regulations.length === 0) && (
+              {regulations.length === 0 && (
                 <SelectItem value="none" disabled>먼저 규정을 업로드하세요</SelectItem>
               )}
             </SelectContent>
@@ -431,15 +346,14 @@ ${initialRequest.diff}`;
           <TabsTrigger value="history" className="flex items-center space-x-2">
             <History className="w-4 h-4" />
             <span>개정안 이력</span>
-            {sortedHistory && sortedHistory.length > 0 && (
+            {sortedHistory.length > 0 && (
               <Badge variant="secondary" className="ml-1">{sortedHistory.length}</Badge>
             )}
           </TabsTrigger>
         </TabsList>
 
-        {/* 새 개정안 탭 */}
+        {/* ─── 새 개정안 탭 ─────────────────────────────────────────────────── */}
         <TabsContent value="new" className="space-y-6">
-          {/* Input Card */}
           <Card className="shadow-sm border-slate-200">
             <CardHeader className="pb-3 border-b bg-slate-50/50">
               <CardTitle className="text-sm font-semibold text-slate-700">
@@ -468,11 +382,11 @@ ${initialRequest.diff}`;
                 <>
                   <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
                     <strong>현재 버전:</strong> v{currentVersion} |{" "}
-                    <strong>규정:</strong> {regulations?.find(r => r.id === selectedRegId)?.fileName}
+                    <strong>규정:</strong> {regulations.find(r => r.id === selectedRegId)?.fileName}
                   </div>
                   <Textarea
                     className="w-full min-h-[100px] resize-none border-slate-200 focus-visible:ring-primary text-slate-700 leading-relaxed p-4"
-                    placeholder="추가 요구사항이나 수정 피드백을 입력하세요... (예: '교육 시간을 3시간으로 늘려줘', '과태료 조항도 추가해줘')"
+                    placeholder="추가 요구사항이나 수정 피드백을 입력하세요..."
                     value={upgradeInput}
                     onChange={(e) => setUpgradeInput(e.target.value)}
                   />
@@ -495,7 +409,7 @@ ${initialRequest.diff}`;
             </CardContent>
           </Card>
 
-          {/* Result */}
+          {/* 로딩 */}
           {loading && (
             <div className="py-20 flex flex-col items-center justify-center space-y-4 bg-white rounded-3xl border border-dashed border-slate-300">
               <Loader2 className="w-12 h-12 animate-spin text-primary opacity-50" />
@@ -503,9 +417,10 @@ ${initialRequest.diff}`;
             </div>
           )}
 
+          {/* 결과 */}
           {result && !loading && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {/* Comparison Table */}
+              {/* 신구조문 대비표 */}
               <Card className="overflow-hidden border-slate-200 shadow-xl">
                 <CardHeader className="bg-slate-900 text-white p-6">
                   <div className="flex items-center justify-between">
@@ -513,9 +428,21 @@ ${initialRequest.diff}`;
                       <CheckCircle2 className="w-5 h-5 text-emerald-400 mr-2" />
                       신구조문 대비표 (추천 초안)
                     </CardTitle>
-                    <Badge variant="outline" className="text-white border-white/20">
-                      Draft v{displayVersion}
-                    </Badge>
+                    <div className="flex items-center space-x-3">
+                      <Badge variant="outline" className="text-white border-white/20">
+                        Draft v{displayVersion}
+                      </Badge>
+                      {/* 다운로드 버튼 */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-white/30 text-white hover:bg-white/10 hover:text-white"
+                        onClick={() => handleDownload(result, displayVersion)}
+                      >
+                        <Download className="w-4 h-4 mr-1.5" />
+                        개정안 다운로드
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <Table>
@@ -544,7 +471,7 @@ ${initialRequest.diff}`;
                 </Table>
               </Card>
 
-              {/* Summaries */}
+              {/* 변경 요약 + 개정 근거 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="border-slate-200 shadow-md">
                   <CardHeader className="pb-3 border-b bg-slate-50/50">
@@ -574,7 +501,7 @@ ${initialRequest.diff}`;
                 </Card>
               </div>
 
-              {/* Version History */}
+              {/* 버전 히스토리 */}
               {currentIterations.length > 1 && (
                 <Card className="border-slate-200 shadow-sm">
                   <CardHeader className="pb-3 border-b bg-slate-50/50">
@@ -589,10 +516,7 @@ ${initialRequest.diff}`;
                           key={iter.version}
                           variant={iter.version === displayVersion ? "default" : "outline"}
                           className="cursor-pointer"
-                          onClick={() => {
-                            setDisplayVersion(iter.version);
-                            setResult(iter.draft);
-                          }}
+                          onClick={() => { setDisplayVersion(iter.version); setResult(iter.draft); }}
                         >
                           v{iter.version}
                         </Badge>
@@ -617,38 +541,29 @@ ${initialRequest.diff}`;
           )}
         </TabsContent>
 
-        {/* 개정안 이력 탭 */}
+        {/* ─── 개정안 이력 탭 ───────────────────────────────────────────────── */}
         <TabsContent value="history" className="space-y-6">
-          {sortedHistory && sortedHistory.length > 0 ? (
+          {sortedHistory.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* 이력 리스트 */}
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">
-                  저장된 개정안
-                </h3>
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">저장된 개정안</h3>
                 {sortedHistory.map((draft) => (
                   <Card
                     key={draft.id}
-                    className={`shadow-sm border-slate-200 cursor-pointer transition-all hover:shadow-md ${
-                      selectedDraft?.id === draft.id ? 'ring-2 ring-primary' : ''
-                    }`}
+                    className={`shadow-sm border-slate-200 cursor-pointer transition-all hover:shadow-md ${selectedDraft?.id === draft.id ? 'ring-2 ring-primary' : ''}`}
                     onClick={() => handleSelectDraft(draft)}
                   >
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-slate-800 truncate">
-                          {draft.regulationName}
-                        </span>
+                        <span className="font-medium text-slate-800 truncate">{draft.regulationName}</span>
                         <div className="flex items-center space-x-2">
                           <Badge variant="secondary">v{draft.iterations.length}</Badge>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-7 w-7 p-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteDraft(draft.id);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteDraft(draft.id); }}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -675,6 +590,16 @@ ${initialRequest.diff}`;
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
+                        {/* 이력에서 다운로드 */}
+                        {displayDraft && (
+                          <Button
+                            variant="outline"
+                            onClick={() => handleDownload(displayDraft, selectedVersion, selectedDraft.regulationName)}
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            다운로드
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           onClick={() => handleContinueFromHistory(selectedDraft)}
@@ -708,16 +633,13 @@ ${initialRequest.diff}`;
                       ))}
                     </div>
 
-                    {/* 선택된 버전 표시 */}
                     {displayDraft && (
                       <Card className="overflow-hidden border-slate-200 shadow-lg">
                         <CardHeader className="bg-slate-900 text-white p-4">
                           <CardTitle className="text-base font-bold flex items-center">
                             <CheckCircle2 className="w-4 h-4 text-emerald-400 mr-2" />
                             신구조문 대비표
-                            <Badge variant="outline" className="text-white border-white/20 ml-2">
-                              v{selectedVersion}
-                            </Badge>
+                            <Badge variant="outline" className="text-white border-white/20 ml-2">v{selectedVersion}</Badge>
                           </CardTitle>
                         </CardHeader>
                         <Table>
@@ -731,15 +653,9 @@ ${initialRequest.diff}`;
                           <TableBody>
                             {displayDraft.comparisonTable.map((item, idx) => (
                               <TableRow key={idx}>
-                                <TableCell className="font-medium text-xs text-slate-700 bg-slate-50/30 border-r align-top py-3">
-                                  {item.section}
-                                </TableCell>
-                                <TableCell className="text-xs text-slate-500 border-r align-top py-3 whitespace-pre-wrap">
-                                  {item.before}
-                                </TableCell>
-                                <TableCell className="text-xs text-slate-900 bg-primary/5 align-top py-3 whitespace-pre-wrap">
-                                  {item.after}
-                                </TableCell>
+                                <TableCell className="font-medium text-xs text-slate-700 bg-slate-50/30 border-r align-top py-3">{item.section}</TableCell>
+                                <TableCell className="text-xs text-slate-500 border-r align-top py-3 whitespace-pre-wrap">{item.before}</TableCell>
+                                <TableCell className="text-xs text-slate-900 bg-primary/5 align-top py-3 whitespace-pre-wrap">{item.after}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>

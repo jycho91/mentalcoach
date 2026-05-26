@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { FileSearch, Sparkles, AlertCircle, Goal, Zap, BookOpen, Loader2, Info } from "lucide-react"
+import { FileSearch, Sparkles, AlertCircle, Goal, Zap, BookOpen, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,65 +13,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useFirestore, useCollection, useUser, useMemoFirebase } from "@/firebase"
-import { collection } from "firebase/firestore"
+import { useSession } from "@/contexts/session-context"
 import { useToast } from "@/hooks/use-toast"
 
 export function JustificationExtractor() {
-  const db = useFirestore();
-  const { user } = useUser();
+  const { regulations } = useSession();
   const { toast } = useToast();
-  
+
   const [draft, setDraft] = useState("");
   const [selectedRegId, setSelectedRegId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<SummarizeRegulationRevisionOutput | null>(null);
 
-  const regulationsRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(db, "regulations");
-  }, [db, user]);
-  
-  const { data: regulations } = useCollection(regulationsRef);
-
   const handleSummarize = async () => {
     if (!draft.trim()) {
-      toast({
-        variant: "destructive",
-        title: "입력 부족",
-        description: "개정할 문구 또는 초안 내용을 입력해주세요."
-      });
+      toast({ variant: "destructive", title: "입력 부족", description: "개정할 문구 또는 초안 내용을 입력해주세요." });
       return;
     }
-
     if (!selectedRegId) {
-      toast({
-        variant: "destructive",
-        title: "규정 미선택",
-        description: "개정의 대상이 되는 기존 규정을 선택해주세요."
-      });
+      toast({ variant: "destructive", title: "규정 미선택", description: "개정의 대상이 되는 기존 규정을 선택해주세요." });
       return;
     }
 
     setLoading(true);
     setSummary(null);
     try {
-      const baseReg = regulations?.find(r => r.id === selectedRegId);
+      const baseReg = regulations.find(r => r.id === selectedRegId);
       const fullPrompt = `[기존 규정 명칭: ${baseReg?.fileName}]\n[개정 문구 및 초안]:\n${draft}`;
-      
+
       const output = await summarizeRegulationRevision({ revisedRegulation: fullPrompt });
       setSummary(output);
-      toast({
-        title: "분석 완료",
-        description: "경영진 보고용 개정 근거가 추출되었습니다."
-      });
+      toast({ title: "분석 완료", description: "경영진 보고용 개정 근거가 추출되었습니다." });
     } catch (error) {
       console.error(error);
-      toast({
-        variant: "destructive",
-        title: "분석 실패",
-        description: "AI 분석 중 오류가 발생했습니다."
-      });
+      toast({ variant: "destructive", title: "분석 실패", description: "AI 분석 중 오류가 발생했습니다." });
     } finally {
       setLoading(false);
     }
@@ -103,9 +78,12 @@ export function JustificationExtractor() {
                     <SelectValue placeholder="라이브러리에서 선택..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {regulations?.map(reg => (
+                    {regulations.map(reg => (
                       <SelectItem key={reg.id} value={reg.id}>{reg.fileName}</SelectItem>
                     ))}
+                    {regulations.length === 0 && (
+                      <SelectItem value="none" disabled>먼저 규정을 업로드하세요</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -117,15 +95,15 @@ export function JustificationExtractor() {
                 <Sparkles className="w-4 h-4 mr-2 text-primary" />
                 2. 개정하려는 문구 또는 초안 입력
               </label>
-              <Textarea 
+              <Textarea
                 className="min-h-[200px] text-base p-6 bg-slate-50/50 border-slate-200 focus:ring-primary shadow-inner rounded-2xl resize-none"
                 placeholder="예: 제 12조 (식대 지원) 항을 '일 1만원에서 1.5만원'으로 상향 조정하고, 법인카드 사용을 원칙으로 함..."
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
               />
             </div>
-            <Button 
-              onClick={handleSummarize} 
+            <Button
+              onClick={handleSummarize}
               disabled={loading || !selectedRegId}
               className="w-full bg-slate-900 hover:bg-slate-800 text-white h-14 text-lg font-bold rounded-2xl shadow-lg transition-all active:scale-[0.98]"
             >
@@ -146,7 +124,7 @@ export function JustificationExtractor() {
               <div className="absolute top-0 right-0 p-8 opacity-5">
                 <FileSearch className="w-32 h-32" />
               </div>
-              
+
               <div className="border-b border-slate-100 pb-6">
                 <h3 className="text-2xl font-headline font-bold text-slate-900">보고서: 규정 개정 근거 요약</h3>
                 <p className="text-sm text-slate-400 mt-1 font-medium uppercase tracking-widest">RegulMate AI Compliance Analysis Report</p>

@@ -1,14 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { MessageSquare, Send, Bot, User, Loader2, Info, AlertCircle, ShieldCheck, Zap } from "lucide-react"
+import { MessageSquare, Send, Bot, User, Loader2, Info, ShieldCheck, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { answerComplianceQuestion } from "@/ai/flows/answer-compliance-question"
 import { cn } from "@/lib/utils"
-import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase"
-import { collection } from "firebase/firestore"
+import { useSession } from "@/contexts/session-context"
 import { useToast } from "@/hooks/use-toast"
 
 interface Message {
@@ -22,31 +21,33 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const db = useFirestore();
-  const { user } = useUser();
+  const { regulations } = useSession();
+  const regCount = regulations.length;
 
-  const regulationsRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(db, "regulations");
-  }, [db, user]);
-
-  const { data: regulations, isLoading: isDbLoading } = useCollection(regulationsRef);
-
-  // 초기 메시지 설정 (데이터 로드 완료 후 정확한 수치 반영)
+  // 초기 메시지 (규정 데이터 즉시 반영)
   useEffect(() => {
-    if (!isDbLoading && regulations !== null && messages.length === 0) {
-      const regCount = regulations.length;
-      setMessages([
-        { 
-          role: 'ai', 
-          text: `안녕하세요! RegulMate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!` 
-        }
-      ]);
+    if (!initialized) {
+      setMessages([{
+        role: 'ai',
+        text: `안녕하세요! RegulMate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!`
+      }]);
+      setInitialized(true);
     }
-  }, [isDbLoading, regulations, messages.length]);
+  }, [initialized, regCount]);
+
+  // 규정 수 변경 시 첫 메시지 업데이트
+  useEffect(() => {
+    if (initialized && messages.length === 1 && messages[0].role === 'ai') {
+      setMessages([{
+        role: 'ai',
+        text: `안녕하세요! RegulMate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!`
+      }]);
+    }
+  }, [regCount]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -57,11 +58,11 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
-    if (!regulations || regulations.length === 0) {
+    if (regulations.length === 0) {
       const userMsg: Message = { role: 'user', text: input };
-      const aiMsg: Message = { 
-        role: 'ai', 
-        text: "현재 규정 라이브러리에 분석할 데이터가 없습니다. 먼저 [규정 라이브러리] 메뉴에서 PDF 규정을 업로드해 주세요." 
+      const aiMsg: Message = {
+        role: 'ai',
+        text: "현재 규정 라이브러리에 분석할 데이터가 없습니다. 먼저 [규정 라이브러리] 메뉴에서 PDF 규정을 업로드해 주세요."
       };
       setMessages(prev => [...prev, userMsg, aiMsg]);
       setInput("");
@@ -77,44 +78,40 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
     try {
       // 키워드 추출 및 관련 규정 스코어링
       const keywords = currentInput.split(' ').filter(word => word.length > 1);
-      
+
       const scoredRegulations = regulations.map(reg => {
         let score = 0;
         const content = (reg.content || "").toLowerCase();
         const fileName = (reg.fileName || "").toLowerCase();
-        
+
         keywords.forEach(keyword => {
           const lowerK = keyword.toLowerCase();
-          if (fileName.includes(lowerK)) score += 50; 
+          if (fileName.includes(lowerK)) score += 50;
           if (content.includes(lowerK)) {
             const matches = content.match(new RegExp(lowerK, 'g'));
             score += (matches ? Math.min(matches.length, 100) : 0);
           }
         });
 
-        // 컴플라이언스 핵심 키워드 가중치
         const criticalTerms = ["위임", "전결", "권한", "절차", "이사회", "승인", "보고", "자산", "처분", "기준", "한도"];
         criticalTerms.forEach(term => {
           if (content.includes(term)) score += 15;
           if (fileName.includes(term)) score += 30;
         });
-        
+
         return { ...reg, score };
       });
 
-      // 관련도 높은 순으로 정렬하여 상위 30개 문서 추출 (전수 대조 분석 범위 확장)
       const topRegulations = scoredRegulations
         .sort((a, b) => b.score - a.score)
         .filter(reg => reg.score > 0)
         .slice(0, 30);
 
-      // 만약 키워드 매칭이 적다면 기본적으로 최신순 또는 전체 중 일부라도 포함
-      const finalSelection = topRegulations.length < 5 
-        ? scoredRegulations.slice(0, 10) 
+      const finalSelection = topRegulations.length < 5
+        ? scoredRegulations.slice(0, 10)
         : topRegulations;
 
       const knowledgeBaseSnippets = finalSelection.map(reg => {
-        // AI가 읽을 수 있도록 각 문서의 핵심 내용 추출 (20000자로 확장)
         const truncatedContent = reg.content?.substring(0, 20000) || "";
         return `[문서명: ${reg.fileName}]\n${truncatedContent}\n---`;
       });
@@ -125,9 +122,9 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
         strictness: strictness
       });
 
-      const aiMessage: Message = { 
-        role: 'ai', 
-        text: response.answer, 
+      const aiMessage: Message = {
+        role: 'ai',
+        text: response.answer,
         reference: response.documentReference,
         crossImpact: response.crossImpactAnalysis
       };
@@ -135,7 +132,7 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
     } catch (error: any) {
       console.error('Chatbot Error:', error);
       let errorText = error.message || "규정 간 상호 영향도를 분석하는 중 오류가 발생했습니다.";
-      
+
       if (error.message?.includes("429") || error.message?.includes("QUOTA")) {
         toast({
           variant: "destructive",
@@ -144,14 +141,12 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
         });
         errorText = "현재 분석할 규정 데이터가 너무 방대하거나 요청이 많아 AI 할당량을 초과했습니다. 잠시 후 다시 시도하시거나, 질문 범위를 좁혀주세요.";
       }
-      
+
       setMessages(prev => [...prev, { role: 'ai', text: errorText }]);
     } finally {
       setLoading(false);
     }
   };
-
-  const regCount = regulations?.length || 0;
 
   return (
     <div className="h-full max-w-4xl mx-auto flex flex-col bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden">
@@ -169,7 +164,7 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
               <p className="text-xs text-slate-400 font-medium">
-                {isDbLoading ? '규정 데이터 로드 중...' : `${regCount}개 규정 기반 답변 준비 완료`}
+                {regCount}개 규정 기반 답변 준비 완료
               </p>
             </div>
           </div>
@@ -198,22 +193,20 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
                 <div className="space-y-3">
                   <div className={cn(
                     "p-5 rounded-2xl text-sm leading-relaxed shadow-sm transition-all whitespace-pre-wrap",
-                    msg.role === 'user' 
-                      ? "bg-slate-900 text-white rounded-tr-none" 
+                    msg.role === 'user'
+                      ? "bg-slate-900 text-white rounded-tr-none"
                       : "bg-white text-slate-800 rounded-tl-none border border-slate-200"
                   )}>
                     {msg.text}
                   </div>
-                  
+
                   {msg.crossImpact && (
                     <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl space-y-2 animate-in zoom-in-95 duration-500">
                       <div className="flex items-center space-x-2 text-amber-700">
                         <Zap className="w-3.5 h-3.5 fill-amber-500" />
                         <span className="text-xs font-bold uppercase tracking-wider">관련 규정 연관성 분석</span>
                       </div>
-                      <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                        {msg.crossImpact}
-                      </p>
+                      <p className="text-xs text-amber-800 leading-relaxed font-medium">{msg.crossImpact}</p>
                     </div>
                   )}
 
@@ -254,22 +247,22 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
 
       {/* Input Section */}
       <div className="p-8 bg-white border-t border-slate-100 shadow-[0_-10px_20px_-15px_rgba(0,0,0,0.05)]">
-        <form 
+        <form
           onSubmit={(e) => { e.preventDefault(); handleSend(); }}
           className="relative flex items-center gap-4"
         >
           <div className="flex-1 relative group">
-            <Input 
+            <Input
               placeholder="예: 육아휴직 관련 규정이 뭐가 있어? / 출장비 정산 절차 알려줘"
               className="w-full pl-6 pr-14 py-8 bg-slate-50 border-slate-200 rounded-2xl focus-visible:ring-primary focus-visible:ring-offset-2 text-base transition-all group-hover:bg-white group-hover:shadow-md"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={loading || isDbLoading}
+              disabled={loading}
             />
           </div>
-          <Button 
+          <Button
             type="submit"
-            disabled={loading || !input.trim() || isDbLoading}
+            disabled={loading || !input.trim()}
             className="h-16 w-16 rounded-2xl bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 active:scale-95 transition-all flex-shrink-0"
           >
             <Send className="w-7 h-7" />

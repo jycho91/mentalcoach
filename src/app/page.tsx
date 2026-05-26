@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import {
   Book, PenTool, FileSearch, MessageSquare, Shield,
-  ShieldOff, User, ChevronDown, Sliders, Settings, Loader2,
-  RefreshCw, AlertTriangle, LogOut, Scale
+  User, ChevronDown, Sliders, Settings, Loader2,
+  RefreshCw, AlertTriangle, LogOut, Scale, Lock, X
 } from "lucide-react"
 import { KnowledgeBase } from "@/components/knowledge-base"
 import { RevisionDrafter } from "@/components/revision-drafter"
@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { useAuth, useUser, initiateAnonymousSignIn, initiateSignOut } from "@/firebase"
+import { useSession } from "@/contexts/session-context"
 
 type View = 'knowledge-base' | 'law-impact' | 'revision-drafter' | 'justification' | 'chatbot';
 
-// 개정안 추천 요청 데이터 타입
 interface RevisionRequest {
   regulationId: string;
   regulationName: string;
@@ -37,23 +37,21 @@ interface RevisionRequest {
 
 export default function RegulMateApp() {
   const [currentView, setCurrentView] = useState<View>('knowledge-base');
-  const [privacyMode, setPrivacyMode] = useState(true);
   const [strictness, setStrictness] = useState(75);
-
-  // 디텍팅 → 개정안 추천 연결용 상태
+  const [showSecurityBanner, setShowSecurityBanner] = useState(true);
   const [revisionRequest, setRevisionRequest] = useState<RevisionRequest | null>(null);
 
-  // 개정안 추천 요청 핸들러
+  const { regulations, drafts, scans } = useSession();
+
   const handleRequestRevision = (data: RevisionRequest) => {
     setRevisionRequest(data);
     setCurrentView('revision-drafter');
   };
 
-  // 개정안 추천 완료 후 초기화
   const handleRevisionComplete = () => {
     setRevisionRequest(null);
   };
-  
+
   const auth = useAuth();
   const { user, isUserLoading, userError } = useUser();
   const [authTimeout, setAuthTimeout] = useState(false);
@@ -72,6 +70,19 @@ export default function RegulMateApp() {
     const id = setTimeout(() => setAuthTimeout(true), 8000);
     return () => clearTimeout(id);
   }, [isUserLoading]);
+
+  // 데이터가 있을 때 페이지 이탈 시 경고 (브라우저 네이티브 다이얼로그)
+  useEffect(() => {
+    const hasData = regulations.length > 0 || drafts.length > 0 || scans.length > 0;
+    if (!hasData) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [regulations.length, drafts.length, scans.length]);
 
   if (isUserLoading || userError) {
     const showError = authTimeout || !!userError;
@@ -125,8 +136,8 @@ export default function RegulMateApp() {
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden text-slate-900">
-      
-      {/* 1. Left Sidebar */}
+
+      {/* Left Sidebar */}
       <aside className="w-80 bg-slate-900 text-slate-100 flex flex-col justify-between flex-shrink-0 z-20 shadow-2xl">
         <div className="flex flex-col h-full">
           {/* Logo */}
@@ -147,8 +158,8 @@ export default function RegulMateApp() {
                   onClick={() => setCurrentView(item.id as View)}
                   className={cn(
                     "w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-300 group",
-                    currentView === item.id 
-                      ? "bg-primary text-white shadow-xl shadow-primary/20 scale-[1.02]" 
+                    currentView === item.id
+                      ? "bg-primary text-white shadow-xl shadow-primary/20 scale-[1.02]"
                       : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
                   )}
                 >
@@ -165,7 +176,7 @@ export default function RegulMateApp() {
 
             <Separator className="bg-slate-800" />
 
-            {/* Vector DB Settings */}
+            {/* 챗봇 정확도 설정 */}
             <div className="space-y-4 px-2">
               <div className="flex items-center space-x-2 mb-3">
                 <Sliders className="w-4 h-4 text-primary" />
@@ -176,10 +187,10 @@ export default function RegulMateApp() {
                   <span className="text-xs text-slate-400 font-medium">정확도</span>
                   <Badge className="bg-primary/20 text-primary border-primary/20 font-code">{strictness}%</Badge>
                 </div>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
                   value={strictness}
                   onChange={(e) => setStrictness(parseInt(e.target.value))}
                   className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary"
@@ -188,6 +199,19 @@ export default function RegulMateApp() {
                   <span>문맥 위주</span>
                   <span>정확 일치</span>
                 </div>
+              </div>
+            </div>
+
+            {/* 보안 정책 안내 */}
+            <div className="px-2">
+              <div className="bg-emerald-900/30 border border-emerald-700/30 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.15em]">보안 세션 활성화</span>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  업로드 파일 및 작업 내용은 브라우저 메모리에만 저장됩니다. 사이트 이탈 시 모든 데이터가 자동으로 완전 삭제됩니다.
+                </p>
               </div>
             </div>
           </nav>
@@ -201,7 +225,7 @@ export default function RegulMateApp() {
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-slate-300">워크스페이스 설정</span>
-              <span className="text-[10px] text-slate-500">ID: {user?.uid.slice(0,8)}...</span>
+              <span className="text-[10px] text-slate-500">ID: {user?.uid.slice(0, 8)}...</span>
             </div>
           </div>
         </div>
@@ -209,11 +233,11 @@ export default function RegulMateApp() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0">
-        
+
         {/* Global Header */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-10 z-10 sticky top-0">
           <div className="flex flex-col">
-            <h1 className="text-xl font-headline font-bold text-slate-800 capitalize tracking-tight flex items-center">
+            <h1 className="text-xl font-headline font-bold text-slate-800 capitalize tracking-tight">
               {viewTitles[currentView]}
             </h1>
             <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
@@ -222,37 +246,16 @@ export default function RegulMateApp() {
               <span className="text-primary">테크코프 글로벌 (TechCorp Global)</span>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-6">
-            {/* Privacy Mode Toggle */}
-            <button 
-              onClick={() => setPrivacyMode(!privacyMode)}
-              className={cn(
-                "flex items-center space-x-3 px-4 py-2 rounded-full border transition-all duration-300 group",
-                privacyMode 
-                  ? "bg-emerald-50 border-emerald-100 text-emerald-700 shadow-sm" 
-                  : "bg-rose-50 border-rose-100 text-rose-700 shadow-sm"
-              )}
-            >
-              {privacyMode ? (
-                <Shield className="w-4 h-4 group-hover:scale-110 transition-transform" />
-              ) : (
-                <ShieldOff className="w-4 h-4 group-hover:scale-110 transition-transform" />
-              )}
+            {/* 세션 보안 배지 */}
+            <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 shadow-sm">
+              <Lock className="w-4 h-4" />
               <div className="flex flex-col items-start leading-none">
-                <span className="text-[10px] font-bold uppercase tracking-wider">프라이버시 보호</span>
-                <span className="text-[10px] font-medium opacity-80">{privacyMode ? '활성화됨' : '비활성'}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">세션 전용 보안</span>
+                <span className="text-[10px] font-medium opacity-70">이탈 시 자동 삭제</span>
               </div>
-              <div className={cn(
-                "w-8 h-4 rounded-full relative transition-colors duration-300",
-                privacyMode ? 'bg-emerald-500' : 'bg-rose-500'
-              )}>
-                <div className={cn(
-                  "w-2.5 h-2.5 bg-white rounded-full absolute top-0.75 transition-all duration-300 shadow-sm",
-                  privacyMode ? 'left-4.5' : 'left-1'
-                )} />
-              </div>
-            </button>
+            </div>
 
             {/* User Profile */}
             <DropdownMenu>
@@ -291,6 +294,28 @@ export default function RegulMateApp() {
           </div>
         </header>
 
+        {/* 보안 안내 배너 */}
+        {showSecurityBanner && (
+          <div className="bg-emerald-50 border-b border-emerald-100 px-10 py-3 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Lock className="w-4 h-4 text-emerald-600" />
+              </div>
+              <p className="text-xs text-emerald-800 font-medium leading-relaxed">
+                <span className="font-bold">보안 세션 모드:</span> 업로드된 규정 파일과 모든 작업 내용은 서버에 저장되지 않으며, 브라우저를 닫거나 페이지를 이탈하면 즉시 삭제됩니다.
+                결과물을 보관하려면 <span className="font-bold">개정안 다운로드</span> 기능을 이용하세요.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSecurityBanner(false)}
+              className="ml-4 p-1 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors flex-shrink-0"
+              title="닫기"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Content Modules */}
         <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
           <div className="max-w-7xl mx-auto h-full">
@@ -309,22 +334,11 @@ export default function RegulMateApp() {
       </main>
 
       <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #E2E8F0;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #CBD5E1;
-        }
-        .prose pre {
-          font-family: 'Source Code Pro', monospace !important;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
+        .prose pre { font-family: 'Source Code Pro', monospace !important; }
       `}</style>
     </div>
   );
