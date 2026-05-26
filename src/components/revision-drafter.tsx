@@ -59,9 +59,8 @@ export function RevisionDrafter({ initialRequest, onComplete }: RevisionDrafterP
 
   // 디텍팅에서 전달받은 데이터로 자동 입력
   useEffect(() => {
-    if (initialRequest) {
-      setSelectedRegId(initialRequest.regulationId);
-      const autoDirective = `[법령 영향 분석 결과에 따른 개정 요청]
+    if (!initialRequest) return;
+    const autoDirective = `[법령 영향 분석 결과에 따른 개정 요청]
 
 개정 대상: ${initialRequest.regulationName}
 
@@ -74,13 +73,16 @@ ${initialRequest.sourceArticle}
 현행 vs 개정 법령 차이점:
 ${initialRequest.diff}`;
 
+    const id = setTimeout(() => {
+      setSelectedRegId(initialRequest.regulationId);
       setDirective(autoDirective);
       setResult(null);
       setCurrentIterations([]);
       setCurrentDraftId(null);
       setDisplayVersion(1);
       setActiveTab("new");
-    }
+    }, 0);
+    return () => clearTimeout(id);
   }, [initialRequest]);
 
   // ─── 세션 저장 ────────────────────────────────────────────────────────────
@@ -495,7 +497,7 @@ ${initialRequest.diff}`;
                   </CardHeader>
                   <CardContent className="pt-4">
                     <p className="text-sm text-slate-700 leading-relaxed italic">
-                      "{result.rationale}"
+                      &ldquo;{result.rationale}&rdquo;
                     </p>
                   </CardContent>
                 </Card>
@@ -678,7 +680,7 @@ ${initialRequest.diff}`;
               </div>
               <div className="text-center">
                 <p className="font-bold">저장된 개정안이 없습니다.</p>
-                <p className="text-sm">"새 개정안 작성" 탭에서 개정안을 생성해보세요.</p>
+                <p className="text-sm">&ldquo;새 개정안 작성&rdquo; 탭에서 개정안을 생성해보세요.</p>
               </div>
             </div>
           )}

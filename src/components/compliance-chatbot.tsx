@@ -31,23 +31,29 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
   // 초기 메시지 (규정 데이터 즉시 반영)
   useEffect(() => {
     if (!initialized) {
-      setMessages([{
-        role: 'ai',
-        text: `안녕하세요! RegulMate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!`
-      }]);
-      setInitialized(true);
+      const id = setTimeout(() => {
+        setMessages([{
+          role: 'ai',
+          text: `안녕하세요! RegulMate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!`
+        }]);
+        setInitialized(true);
+      }, 0);
+      return () => clearTimeout(id);
     }
   }, [initialized, regCount]);
 
   // 규정 수 변경 시 첫 메시지 업데이트
   useEffect(() => {
     if (initialized && messages.length === 1 && messages[0].role === 'ai') {
-      setMessages([{
-        role: 'ai',
-        text: `안녕하세요! RegulMate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!`
-      }]);
+      const id = setTimeout(() => {
+        setMessages([{
+          role: 'ai',
+          text: `안녕하세요! RegulMate 컴플라이언스 어시스턴트입니다. 현재 라이브러리에 등록된 ${regCount}개의 규정을 기반으로 규정 관련 질문에 답변하고, 규정 간 연관성을 분석해 드립니다. 무엇이든 물어보세요!`
+        }]);
+      }, 0);
+      return () => clearTimeout(id);
     }
-  }, [regCount]);
+  }, [regCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (scrollRef.current) {

@@ -315,7 +315,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
               </div>
               <div className="text-center">
                 <p className="font-bold">스캔 이력이 없습니다.</p>
-                <p className="text-sm">"새 스캔" 탭에서 법령 영향 스캔을 실행해보세요.</p>
+                <p className="text-sm">&ldquo;새 스캔&rdquo; 탭에서 법령 영향 스캔을 실행해보세요.</p>
               </div>
             </div>
           )}
@@ -381,7 +381,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
                       </div>
                       <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">관련 법령 조문</h4>
-                        <p className="text-sm text-slate-700 leading-relaxed font-mono italic">"{impact.sourceArticle}"</p>
+                        <p className="text-sm text-slate-700 leading-relaxed font-mono italic">&ldquo;{impact.sourceArticle}&rdquo;</p>
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">현행 vs 개정 법령 차이점</h4>

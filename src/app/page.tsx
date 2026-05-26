@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import {
   Book, PenTool, FileSearch, MessageSquare, Shield,
   User, ChevronDown, Sliders, Settings, Loader2,
-  RefreshCw, AlertTriangle, LogOut, Scale, Lock, X
+  RefreshCw, AlertTriangle, LogOut, Scale, Lock, X, LayoutDashboard
 } from "lucide-react"
+import { Dashboard } from "@/components/dashboard"
 import { KnowledgeBase } from "@/components/knowledge-base"
 import { RevisionDrafter } from "@/components/revision-drafter"
 import { JustificationExtractor } from "@/components/justification-extractor"
@@ -25,7 +26,7 @@ import { cn } from "@/lib/utils"
 import { useAuth, useUser, initiateAnonymousSignIn, initiateSignOut } from "@/firebase"
 import { useSession } from "@/contexts/session-context"
 
-type View = 'knowledge-base' | 'law-impact' | 'revision-drafter' | 'justification' | 'chatbot';
+type View = 'dashboard' | 'knowledge-base' | 'law-impact' | 'revision-drafter' | 'justification' | 'chatbot';
 
 interface RevisionRequest {
   regulationId: string;
@@ -36,7 +37,7 @@ interface RevisionRequest {
 }
 
 export default function RegulMateApp() {
-  const [currentView, setCurrentView] = useState<View>('knowledge-base');
+  const [currentView, setCurrentView] = useState<View>('dashboard');
   const [strictness, setStrictness] = useState(75);
   const [showSecurityBanner, setShowSecurityBanner] = useState(true);
   const [revisionRequest, setRevisionRequest] = useState<RevisionRequest | null>(null);
@@ -64,8 +65,8 @@ export default function RegulMateApp() {
 
   useEffect(() => {
     if (!isUserLoading) {
-      setAuthTimeout(false);
-      return;
+      const id = setTimeout(() => setAuthTimeout(false), 0);
+      return () => clearTimeout(id);
     }
     const id = setTimeout(() => setAuthTimeout(true), 8000);
     return () => clearTimeout(id);
@@ -119,6 +120,7 @@ export default function RegulMateApp() {
   }
 
   const navItems = [
+    { id: 'dashboard', icon: <LayoutDashboard className="w-5 h-5" />, label: '대시보드' },
     { id: 'knowledge-base', icon: <Book className="w-5 h-5" />, label: '규정 라이브러리' },
     { id: 'law-impact', icon: <Scale className="w-5 h-5" />, label: '법령 영향 스캔' },
     { id: 'revision-drafter', icon: <PenTool className="w-5 h-5" />, label: '개정안 추천' },
@@ -127,6 +129,7 @@ export default function RegulMateApp() {
   ];
 
   const viewTitles: Record<View, string> = {
+    'dashboard': '대시보드',
     'knowledge-base': '규정 라이브러리',
     'law-impact': '법령 영향 스캔',
     'revision-drafter': '개정안 추천 서비스',
@@ -319,6 +322,7 @@ export default function RegulMateApp() {
         {/* Content Modules */}
         <div className="flex-1 p-10 overflow-y-auto custom-scrollbar">
           <div className="max-w-7xl mx-auto h-full">
+            {currentView === 'dashboard' && <Dashboard onNavigate={(v) => setCurrentView(v)} />}
             {currentView === 'knowledge-base' && <KnowledgeBase />}
             {currentView === 'law-impact' && <LawImpactDetector onRequestRevision={handleRequestRevision} />}
             {currentView === 'revision-drafter' && (
