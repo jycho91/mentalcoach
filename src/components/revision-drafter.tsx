@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Wand2, ArrowRight, CheckCircle2, BookOpen, FileDiff, Info, Loader2, Scale, History, Clock, ChevronRight, RefreshCw, Trash2 } from "lucide-react"
+import { Wand2, ArrowRight, CheckCircle2, BookOpen, FileDiff, Info, Loader2, Scale, History, Clock, ChevronRight, RefreshCw, Trash2, FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +26,7 @@ import { generateRegulationDraft, type GenerateRegulationDraftOutput } from "@/a
 import { useFirestore, useCollection, useUser, useMemoFirebase, addDocument } from "@/firebase"
 import { collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
+import { generateRevisionDocx, getRevisionDocxFilename } from "@/lib/revision-docx"
 
 // 디텍팅에서 전달받는 요청 데이터 타입
 interface RevisionRequest {
@@ -370,6 +371,38 @@ ${initialRequest.diff}`;
     });
   };
 
+  // Word 문서 다운로드
+  const handleExportToWord = async (draftResult: GenerateRegulationDraftOutput, regName: string) => {
+    try {
+      const blob = await generateRevisionDocx({
+        regulationName: regName,
+        rationale: draftResult.rationale,
+        summaryOfChanges: draftResult.summaryOfChanges,
+        comparisonTable: draftResult.comparisonTable,
+      });
+      const filename = getRevisionDocxFilename(regName);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "다운로드 완료",
+        description: `${filename} 파일이 다운로드되었습니다.`,
+      });
+    } catch (error) {
+      console.error("Export to Word failed:", error);
+      toast({
+        variant: "destructive",
+        title: "다운로드 실패",
+        description: "Word 문서 생성 중 오류가 발생했습니다.",
+      });
+    }
+  };
+
   // 이력 정렬 (최신순)
   const sortedHistory = draftHistory?.slice().sort((a, b) =>
     new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -513,9 +546,23 @@ ${initialRequest.diff}`;
                       <CheckCircle2 className="w-5 h-5 text-emerald-400 mr-2" />
                       신구조문 대비표 (추천 초안)
                     </CardTitle>
-                    <Badge variant="outline" className="text-white border-white/20">
-                      Draft v{displayVersion}
-                    </Badge>
+                    <div className="flex items-center space-x-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                        onClick={() => {
+                          const regName = regulations?.find(r => r.id === selectedRegId)?.fileName || "규정";
+                          handleExportToWord(result, regName);
+                        }}
+                      >
+                        <FileDown className="w-4 h-4 mr-2" />
+                        워드로 내보내기
+                      </Button>
+                      <Badge variant="outline" className="text-white border-white/20">
+                        Draft v{displayVersion}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <Table>
@@ -712,13 +759,24 @@ ${initialRequest.diff}`;
                     {displayDraft && (
                       <Card className="overflow-hidden border-slate-200 shadow-lg">
                         <CardHeader className="bg-slate-900 text-white p-4">
-                          <CardTitle className="text-base font-bold flex items-center">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 mr-2" />
-                            신구조문 대비표
-                            <Badge variant="outline" className="text-white border-white/20 ml-2">
-                              v{selectedVersion}
-                            </Badge>
-                          </CardTitle>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base font-bold flex items-center">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 mr-2" />
+                              신구조문 대비표
+                              <Badge variant="outline" className="text-white border-white/20 ml-2">
+                                v{selectedVersion}
+                              </Badge>
+                            </CardTitle>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                              onClick={() => handleExportToWord(displayDraft, selectedDraft?.regulationName || "규정")}
+                            >
+                              <FileDown className="w-4 h-4 mr-2" />
+                              워드로 내보내기
+                            </Button>
+                          </div>
                         </CardHeader>
                         <Table>
                           <TableHeader className="bg-slate-50">
