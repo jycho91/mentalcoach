@@ -81,7 +81,8 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
       userId: user.uid,
       scannedAt: new Date().toISOString(),
       lawText: scannedLawText,
-      lawName: scannedLawName,
+      // 법령 이름을 입력한 경우에만 저장 (undefined는 Firestore가 거부함)
+      ...(scannedLawName ? { lawName: scannedLawName } : {}),
       regulationCount: regulations?.length || 0,
       impactedCount: output.impactedRegulations.length,
       impacts: output.impactedRegulations.map(r => ({
@@ -89,10 +90,10 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
         regulationName: r.regulationName,
         impactLevel: r.impactLevel,
         reason: r.reason,
-        sourceArticle: r.sourceArticle,
-        diff: r.diff,
+        sourceArticle: r.sourceArticle ?? "",
+        diff: r.diff ?? "",
       })),
-      summary: output.summary,
+      summary: output.summary ?? "",
     };
 
     try {
