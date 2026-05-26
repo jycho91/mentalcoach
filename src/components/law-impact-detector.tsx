@@ -13,6 +13,7 @@ import { SAMPLE_LAWS } from "@/lib/sample-law"
 import { useFirestore, useCollection, useUser, useMemoFirebase, addDocument } from "@/firebase"
 import { collection, doc, deleteDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
+import { buildScanData, type LawImpactScan } from "@/lib/scan-data"
 
 // 개정안 추천 요청 데이터 타입
 interface RevisionRequest {
@@ -27,24 +28,7 @@ interface LawImpactDetectorProps {
   onRequestRevision?: (data: RevisionRequest) => void;
 }
 
-// Firestore 스캔 결과 타입
-interface LawImpactScan {
-  userId: string;
-  scannedAt: string;
-  lawText: string;
-  lawName?: string;
-  regulationCount: number;
-  impactedCount: number;
-  impacts: Array<{
-    regulationId: string;
-    regulationName: string;
-    impactLevel: 'HIGH' | 'MEDIUM' | 'LOW';
-    reason: string;
-    sourceArticle: string;
-    diff: string;
-  }>;
-  summary: string;
-}
+// Firestore 스캔 결과 타입은 @/lib/scan-data 에서 가져와 사용 (중복 정의 제거)
 
 export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps) {
   const db = useFirestore();
@@ -77,24 +61,14 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
   const saveScanResult = async (output: DetectLawImpactOutput, scannedLawText: string, scannedLawName?: string) => {
     if (!user || !scansRef) return;
 
-    const scanData: LawImpactScan = {
+    const scanData = buildScanData({
       userId: user.uid,
-      scannedAt: new Date().toISOString(),
       lawText: scannedLawText,
-      // 법령 이름을 입력한 경우에만 저장 (undefined는 Firestore가 거부함)
-      ...(scannedLawName ? { lawName: scannedLawName } : {}),
+      lawName: scannedLawName,
       regulationCount: regulations?.length || 0,
-      impactedCount: output.impactedRegulations.length,
-      impacts: output.impactedRegulations.map(r => ({
-        regulationId: r.regulationId,
-        regulationName: r.regulationName,
-        impactLevel: r.impactLevel,
-        reason: r.reason,
-        sourceArticle: r.sourceArticle ?? "",
-        diff: r.diff ?? "",
-      })),
-      summary: output.summary ?? "",
-    };
+      impactedRegulations: output.impactedRegulations,
+      summary: output.summary,
+    });
 
     try {
       await addDocument(scansRef, scanData);
