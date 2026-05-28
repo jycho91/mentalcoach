@@ -343,6 +343,11 @@
       border-color: #CBD5E1;
     }
     .btn-secondary-action:hover { background: #F8FAFC; border-color: #94A3B8; }
+    .btn-word-action {
+      background: #2B579A; color: #fff;
+      border-color: #2B579A;
+    }
+    .btn-word-action:hover { background: #1E4080; border-color: #1E4080; }
 
     /* ── Toast ── */
     .toast {
@@ -688,6 +693,9 @@
       <button class="btn-action btn-secondary-action" onclick="copyText()">
         📋 개정안 텍스트 복사
       </button>
+      <button class="btn-action btn-word-action" id="wordBtn" onclick="downloadDocx()">
+        📄 Word 다운로드
+      </button>
       <button class="btn-action btn-primary-action" onclick="window.print()">
         🖨️ 인쇄 / PDF 저장
       </button>
@@ -1007,6 +1015,11 @@
 
     btn.textContent = '🔄 다시 분석';
     btn.disabled = false;
+  }
+
+  // ── Word export ───────────────────────────────────────
+  function downloadDocx() {
+    showToast('⚠️ Word 내보내기 기능은 다음 버전에서 제공됩니다');
   }
 
   function proceedToResults() {
