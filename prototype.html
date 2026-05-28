@@ -1026,6 +1026,14 @@
 
     const d = DATA[reg];
     const row = d.rows[0];
+
+    // Strip HTML tags; convert <br> to newline
+    const stripHtml = s => s
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+      .trim();
+
     const plainRevised = row.revised
       .replace(/<add>(.*?)<\/add>/g, '$1')
       .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -1033,65 +1041,105 @@
     const { Document, Paragraph, Table, TableRow, TableCell,
             TextRun, AlignmentType, WidthType, BorderStyle, Packer } = window.docx;
 
-    const cell = (text, isHeader) => new TableCell({
-      borders: {
-        top:    { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
-        bottom: { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
-        left:   { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
-        right:  { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
-      },
-      shading: isHeader ? { fill: '2B579A' } : undefined,
+    const KO_FONT = '맑은 고딕';
+    const NAV  = '0F2D6B';
+    const BLUE = '3B82F6';
+    const DARK = '1A2332';
+    const GRAY = '64748B';
+    const WHITE = 'FFFFFF';
+
+    const borders = c => ({
+      top: { style: BorderStyle.SINGLE, size: 4, color: c },
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: c },
+      left: { style: BorderStyle.SINGLE, size: 4, color: c },
+      right: { style: BorderStyle.SINGLE, size: 4, color: c },
+    });
+
+    const run = (text, opts = {}) =>
+      new TextRun({ text, font: KO_FONT, size: 22, color: DARK, ...opts });
+
+    const para = (children, spacing = {}, opts = {}) =>
+      new Paragraph({ children: Array.isArray(children) ? children : [children], spacing: { after: 120, ...spacing }, ...opts });
+
+    const sectionHeading = title => new Paragraph({
+      children: [run(title, { bold: true, size: 26, color: NAV })],
+      spacing: { before: 360, after: 160 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: BLUE, space: 1 } },
+    });
+
+    const bulletItem = text => new Paragraph({
+      children: [run(`• ${text}`)],
+      spacing: { after: 100 },
+      indent: { left: 280 },
+    });
+
+    const tblHeaderCell = text => new TableCell({
+      borders: borders(NAV),
+      shading: { fill: NAV, color: NAV },
       children: [new Paragraph({
-        alignment: isHeader ? AlignmentType.CENTER : AlignmentType.LEFT,
-        children: [new TextRun({
-          text, bold: isHeader, size: 22,
-          color: isHeader ? 'FFFFFF' : '1A2332',
-        })],
+        alignment: AlignmentType.CENTER,
+        children: [run(text, { bold: true, size: 22, color: WHITE })],
       })],
     });
 
-    const multilineCell = (text, isHeader) => {
-      const lines = text.split('\n');
-      return new TableCell({
-        borders: {
-          top:    { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
-          bottom: { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
-          left:   { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
-          right:  { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
-        },
-        children: lines.map(line => new Paragraph({
-          children: [new TextRun({ text: line, size: 22, color: '1A2332' })],
-          spacing: { after: 80 },
-        })),
-      });
-    };
+    const tblBodyCell = text => new TableCell({
+      borders: borders('94A3B8'),
+      children: text.split('\n').map((line, i) => new Paragraph({
+        children: [run(line, { size: 21 })],
+        spacing: { after: i === text.split('\n').length - 1 ? 0 : 80 },
+      })),
+    });
+
+    const reasonLines = stripHtml(d.reason).split('\n').filter(s => s.trim());
 
     const doc = new Document({
       sections: [{
-        properties: {},
+        properties: {
+          page: { margin: { top: 1440, right: 1134, bottom: 1440, left: 1134 } },
+        },
         children: [
-          new Paragraph({
-            children: [new TextRun({ text: '신구조문대비표', bold: true, size: 36, color: '0F2D6B' })],
-            spacing: { after: 200 },
-          }),
-          new Paragraph({
-            children: [new TextRun({ text: row.article, bold: true, size: 24, color: '1A2332' })],
-            spacing: { after: 300 },
-          }),
+          // ── 문서 헤더 ──
+          para(run('RegulMate  법령-사내규정 동기화 보고서', { bold: true, size: 44, color: NAV }),
+            { after: 160 }, { alignment: AlignmentType.CENTER }),
+          para(run(d.lawName, { size: 26, color: BLUE }),
+            { after: 80 }, { alignment: AlignmentType.CENTER }),
+          para(run(d.lawSub, { size: 20, color: GRAY }),
+            { after: 80 }, { alignment: AlignmentType.CENTER }),
+          para(run(`생성일: ${new Date().toLocaleDateString('ko-KR')}  |  ${d.tableMeta}`, { size: 19, color: GRAY }),
+            { after: 480 }, { alignment: AlignmentType.CENTER }),
+
+          // ── 1. 개정 사유 ──
+          sectionHeading('1. 개정 사유'),
+          ...reasonLines.map(line => para(run(line))),
+
+          // ── 2. 주요 골자 ──
+          sectionHeading('2. 주요 골자'),
+          ...d.goja.map(item => bulletItem(item)),
+
+          // ── 3. 신구조문대비표 ──
+          sectionHeading('3. 신구조문대비표'),
+          para(run(row.article, { bold: true, size: 22 }), { after: 160 }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
               new TableRow({
                 tableHeader: true,
-                children: [cell('현  행', true), cell('개  정  안', true)],
+                children: [tblHeaderCell('현  행'), tblHeaderCell('개  정  안')],
               }),
               new TableRow({
-                children: [
-                  multilineCell(row.current, false),
-                  multilineCell(plainRevised, false),
-                ],
+                children: [tblBodyCell(row.current), tblBodyCell(plainRevised)],
               }),
             ],
+          }),
+
+          // ── 면책 고지 ──
+          para([], { before: 480 }),
+          new Paragraph({
+            children: [run(
+              '※ 이 문서는 RegulMate AI가 생성한 초안입니다. 반드시 법무팀의 최종 검토 후 사용하시기 바랍니다.',
+              { size: 18, color: '94A3B8', italics: true }
+            )],
+            alignment: AlignmentType.CENTER,
           }),
         ],
       }],
@@ -1103,11 +1151,13 @@
     Packer.toBlob(doc).then(blob => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `신구조문대비표_${reg}.docx`;
+      a.href = url;
+      a.download = `RegulMate_${reg}_${new Date().toISOString().slice(0, 10)}.docx`;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
-      showToast('✅ Word 파일이 다운로드되었습니다');
-    }).catch(() => {
+      showToast('✅ Word 문서가 다운로드되었습니다');
+    }).catch(err => {
+      console.error('docx error:', err);
       showToast('⚠️ Word 파일 생성에 실패했습니다');
     }).finally(() => {
       btn.textContent = '📄 Word 다운로드';
