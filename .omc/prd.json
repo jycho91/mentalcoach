@@ -1,0 +1,36 @@
+{
+  "task": "Add test infrastructure to RegulMate demo",
+  "stories": [
+    {
+      "id": "s1",
+      "title": "Test runner is configured",
+      "criteria": [
+        "package.json has a 'test' script",
+        "jest.config.ts exists at project root",
+        "jest and ts-jest are listed in devDependencies"
+      ],
+      "passes": true
+    },
+    {
+      "id": "s2",
+      "title": "Core utility is covered by tests",
+      "criteria": [
+        "src/__tests__/utils.test.ts exists",
+        "Tests cover at least 3 distinct behaviours of cn()",
+        "Tests handle edge cases: falsy values, undefined, conflict resolution"
+      ],
+      "passes": true
+    },
+    {
+      "id": "s3",
+      "title": "Health stack is documented",
+      "criteria": [
+        "CLAUDE.md exists at project root",
+        "CLAUDE.md contains a '## Health Stack' section",
+        "All four tool lines (typecheck, lint, test, deadcode) are present"
+      ],
+      "passes": true
+    }
+  ],
+  "status": "complete"
+}
