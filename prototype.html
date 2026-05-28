@@ -369,6 +369,182 @@
       body { background: #fff; }
       .table-card, .info-card { box-shadow: none; border: 1px solid #ccc; }
     }
+
+    /* ── Step 1.5 SOP Impact Mapper ── */
+    #sopCard {
+      display: none;
+      animation: fadeUp 0.4s ease forwards;
+    }
+    #sopCard.visible { display: block; }
+
+    .sop-hint {
+      font-size: 13px;
+      color: #64748B;
+      line-height: 1.65;
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      background: #F8FAFC;
+      border-radius: 8px;
+      border-left: 3px solid #3B82F6;
+    }
+
+    .sop-input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .sop-input {
+      flex: 1;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #1A2332;
+      background: #F8FAFC;
+      transition: border-color 0.15s;
+    }
+    .sop-input:focus { outline: none; border-color: #3B82F6; background: #fff; }
+    .sop-input::placeholder { color: #94A3B8; }
+
+    .btn-add-sop {
+      padding: 11px 20px;
+      background: #3B82F6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .btn-add-sop:hover { background: #2563EB; }
+
+    .sop-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 32px;
+      margin-bottom: 16px;
+    }
+
+    .sop-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border: 1px solid #BFDBFE;
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .sop-tag-remove {
+      cursor: pointer;
+      color: #93C5FD;
+      font-size: 15px;
+      line-height: 1;
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: inherit;
+      transition: color 0.15s;
+    }
+    .sop-tag-remove:hover { color: #1D4ED8; }
+
+    .btn-analyze {
+      width: 100%;
+      background: #3B82F6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-analyze:hover:not(:disabled) { background: #2563EB; }
+    .btn-analyze:active:not(:disabled) { transform: scale(0.99); }
+    .btn-analyze:disabled { background: #94A3B8; cursor: not-allowed; }
+
+    .sop-results {
+      display: none;
+      margin-top: 20px;
+      animation: fadeUp 0.35s ease forwards;
+    }
+    .sop-results.visible { display: block; }
+
+    .sop-result-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1px solid;
+    }
+    .sop-result-row.impact-high { background: #FEF2F2; border-color: #FECACA; }
+    .sop-result-row.impact-mid  { background: #FFFBEB; border-color: #FDE68A; }
+    .sop-result-row.impact-low  { background: #F0FDF4; border-color: #BBF7D0; }
+
+    .sop-result-info { flex: 1; }
+    .sop-result-name { font-size: 13.5px; font-weight: 600; color: #1A2332; margin-bottom: 3px; }
+    .sop-result-desc { font-size: 12px; color: #64748B; }
+
+    .sop-badge {
+      flex-shrink: 0;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .badge-high { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
+    .badge-mid  { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+    .badge-low  { background: #DCFCE7; color: #166534; border: 1px solid #BBF7D0; }
+
+    .sop-legal-notice {
+      background: #FFF7ED;
+      border: 1.5px solid #FED7AA;
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 12.5px;
+      line-height: 1.75;
+      color: #92400E;
+      margin-top: 16px;
+      margin-bottom: 16px;
+    }
+
+    .btn-proceed {
+      width: 100%;
+      background: #059669;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-proceed:hover { background: #047857; }
+    .btn-proceed:active { transform: scale(0.99); }
   </style>
 </head>
 <body>
@@ -424,6 +600,39 @@
         <div class="progress-dot" id="dot4"></div>
         <span id="prog4text">영향 조문 분석 중...</span>
       </div>
+    </div>
+  </div>
+
+  <!-- Step 1.5 — SOP Impact Mapper -->
+  <div class="step-card" id="sopCard">
+    <div class="step-label">Step 1.5</div>
+    <div class="step-title">영향받는 내부 규정을 확인하세요</div>
+    <div class="sop-hint">
+      법령 개정 초안 생성 전에, 어떤 사내 SOP/규정이 영향을 받는지 먼저 파악합니다.<br>
+      규정 번호 또는 제목을 입력해 추가하세요.
+      <span style="color:#94A3B8">(예: SOP-MKT-001, 의약품광고심의규정)</span>
+    </div>
+    <div class="sop-input-row">
+      <input type="text" class="sop-input" id="sopInput"
+             placeholder="SOP 이름 또는 번호 입력 (Enter로 추가)" />
+      <button class="btn-add-sop" onclick="addSopTag()">추가</button>
+    </div>
+    <div class="sop-tags" id="sopTags"></div>
+    <button class="btn-analyze" id="analyzeBtn" onclick="runImpactAnalysis()" disabled>
+      🔎 영향도 분석 실행
+    </button>
+
+    <!-- Analysis results (hidden until analyze runs) -->
+    <div class="sop-results" id="sopResults">
+      <div class="results-divider" style="margin-top:4px">영향도 분석 결과</div>
+      <div id="sopResultRows"></div>
+      <div class="sop-legal-notice">
+        ⚠️ 이 분석 결과는 AI가 생성한 초안입니다. 반드시 Legal 검토 후 활용하시기 바랍니다.
+        ETC 의약품 광고·판촉 활동은 약사법 위반 시 허가 취소 등 중대한 제재가 따를 수 있습니다.
+      </div>
+      <button class="btn-proceed" onclick="proceedToResults()">
+        ✅ 확인 완료 — 신구조문대비표 생성하기
+      </button>
     </div>
   </div>
 
@@ -581,10 +790,13 @@
     document.getElementById('btnIcon').textContent = '⏳';
     document.getElementById('btnText').textContent = '스캔 중...';
 
-    // Hide old results
+    // Hide old results and SOP card
     const results = document.getElementById('results');
     results.classList.remove('visible');
     results.style.display = 'none';
+    const sopCard = document.getElementById('sopCard');
+    sopCard.classList.remove('visible');
+    sopCard.style.display = 'none';
 
     // Show progress
     const prog = document.getElementById('scanProgress');
@@ -599,12 +811,8 @@
 
     await sleep(300);
 
-    // Populate results
-    populateResults(reg);
-
-    // Show results
-    results.style.display = 'block';
-    results.classList.add('visible');
+    // Show SOP Impact Mapper before generating draft
+    showSopMapper(reg);
 
     // Reset button
     btn.disabled = false;
@@ -702,6 +910,111 @@
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ── SOP Impact Mapper ──────────────────────────────────
+  let _currentReg = '';
+
+  function showSopMapper(reg) {
+    _currentReg = reg;
+    document.getElementById('sopTags').innerHTML = '';
+    document.getElementById('sopInput').value = '';
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('analyzeBtn').textContent = '🔎 영향도 분석 실행';
+    document.getElementById('sopResults').classList.remove('visible');
+    document.getElementById('sopResults').style.display = '';
+    document.getElementById('sopResultRows').innerHTML = '';
+
+    const card = document.getElementById('sopCard');
+    card.style.display = 'block';
+    card.classList.add('visible');
+    setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }
+
+  // Enter key support for SOP input
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('sopInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addSopTag();
+    });
+  });
+
+  function addSopTag() {
+    const input = document.getElementById('sopInput');
+    const name = input.value.trim();
+    if (!name) return;
+
+    const tags = document.getElementById('sopTags');
+    const tag = document.createElement('span');
+    tag.className = 'sop-tag';
+    tag.dataset.name = name;
+    tag.innerHTML = `${name} <button class="sop-tag-remove" onclick="removeSopTag(this)" title="제거">×</button>`;
+    tags.appendChild(tag);
+
+    input.value = '';
+    input.focus();
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+
+  function removeSopTag(btn) {
+    btn.closest('.sop-tag').remove();
+    const empty = document.getElementById('sopTags').children.length === 0;
+    document.getElementById('analyzeBtn').disabled = empty;
+  }
+
+  async function runImpactAnalysis() {
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ 분석 중...';
+
+    await sleep(1200);
+
+    const names = Array.from(
+      document.getElementById('sopTags').querySelectorAll('.sop-tag')
+    ).map(t => t.dataset.name);
+
+    const container = document.getElementById('sopResultRows');
+    container.innerHTML = '';
+
+    names.forEach(name => {
+      let level, badgeClass, badgeText, desc;
+      if (/MKT|광고|마케팅/.test(name)) {
+        level = 'impact-high'; badgeClass = 'badge-high'; badgeText = '영향 가능성 높음';
+        desc = '의약품 광고·판촉 관련 조문이 직접 영향을 받습니다.';
+      } else if (/HR|취업규칙/.test(name)) {
+        level = 'impact-mid'; badgeClass = 'badge-mid'; badgeText = '검토 필요';
+        desc = '근로조건 관련 조문과 연관 가능성이 있습니다.';
+      } else {
+        level = 'impact-low'; badgeClass = 'badge-low'; badgeText = '무관';
+        desc = '이번 법령 개정과 직접 연관되지 않습니다.';
+      }
+
+      const row = document.createElement('div');
+      row.className = `sop-result-row ${level}`;
+      row.innerHTML = `
+        <div class="sop-result-info">
+          <div class="sop-result-name">${name}</div>
+          <div class="sop-result-desc">${desc}</div>
+        </div>
+        <span class="sop-badge ${badgeClass}">${badgeText}</span>`;
+      container.appendChild(row);
+    });
+
+    const sopResults = document.getElementById('sopResults');
+    sopResults.style.display = 'block';
+    sopResults.offsetHeight; // force reflow for animation
+    sopResults.classList.add('visible');
+    setTimeout(() => sopResults.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+
+    btn.textContent = '🔄 다시 분석';
+    btn.disabled = false;
+  }
+
+  function proceedToResults() {
+    populateResults(_currentReg);
+    const results = document.getElementById('results');
+    results.style.display = 'block';
+    results.classList.add('visible');
+    setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
 </script>
 </body>
