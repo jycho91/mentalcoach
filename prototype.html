@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RegulMate — 법령-사내규정 동기화 AI</title>
+  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1019,7 +1020,99 @@
 
   // ── Word export ───────────────────────────────────────
   function downloadDocx() {
-    showToast('⚠️ Word 내보내기 기능은 다음 버전에서 제공됩니다');
+    const reg = document.getElementById('regSelect').value;
+    if (!reg) { showToast('⚠️ 규정을 먼저 선택해주세요'); return; }
+    if (!window.docx) { showToast('⚠️ docx 라이브러리 로딩 중입니다. 잠시 후 다시 시도하세요.'); return; }
+
+    const d = DATA[reg];
+    const row = d.rows[0];
+    const plainRevised = row.revised
+      .replace(/<add>(.*?)<\/add>/g, '$1')
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+    const { Document, Paragraph, Table, TableRow, TableCell,
+            TextRun, AlignmentType, WidthType, BorderStyle, Packer } = window.docx;
+
+    const cell = (text, isHeader) => new TableCell({
+      borders: {
+        top:    { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
+        bottom: { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
+        left:   { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
+        right:  { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
+      },
+      shading: isHeader ? { fill: '2B579A' } : undefined,
+      children: [new Paragraph({
+        alignment: isHeader ? AlignmentType.CENTER : AlignmentType.LEFT,
+        children: [new TextRun({
+          text, bold: isHeader, size: 22,
+          color: isHeader ? 'FFFFFF' : '1A2332',
+        })],
+      })],
+    });
+
+    const multilineCell = (text, isHeader) => {
+      const lines = text.split('\n');
+      return new TableCell({
+        borders: {
+          top:    { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
+          bottom: { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
+          left:   { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
+          right:  { style: BorderStyle.SINGLE, size: 4, color: '2B579A' },
+        },
+        children: lines.map(line => new Paragraph({
+          children: [new TextRun({ text: line, size: 22, color: '1A2332' })],
+          spacing: { after: 80 },
+        })),
+      });
+    };
+
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: '신구조문대비표', bold: true, size: 36, color: '0F2D6B' })],
+            spacing: { after: 200 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: row.article, bold: true, size: 24, color: '1A2332' })],
+            spacing: { after: 300 },
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                tableHeader: true,
+                children: [cell('현  행', true), cell('개  정  안', true)],
+              }),
+              new TableRow({
+                children: [
+                  multilineCell(row.current, false),
+                  multilineCell(plainRevised, false),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }],
+    });
+
+    const btn = document.getElementById('wordBtn');
+    btn.textContent = '⏳ 생성 중...';
+    btn.disabled = true;
+    Packer.toBlob(doc).then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `신구조문대비표_${reg}.docx`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      showToast('✅ Word 파일이 다운로드되었습니다');
+    }).catch(() => {
+      showToast('⚠️ Word 파일 생성에 실패했습니다');
+    }).finally(() => {
+      btn.textContent = '📄 Word 다운로드';
+      btn.disabled = false;
+    });
   }
 
   function proceedToResults() {
