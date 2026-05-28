@@ -219,7 +219,7 @@ export default function RegulMateApp() {
             <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
               <span>워크스페이스</span>
               <span className="w-1 h-1 bg-slate-300 rounded-full" />
-              <span className="text-primary">테크코프 글로벌 (TechCorp Global)</span>
+              <span className="text-primary">내 워크스페이스</span>
             </div>
           </div>
           
