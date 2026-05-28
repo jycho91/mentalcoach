@@ -1,0 +1,13 @@
+{
+  "name": "regulmate",
+  "description": "RegulMate — 법령-사내규정 동기화 AI prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
