@@ -187,7 +187,7 @@ const detectLawImpactFlow = ai.defineFlow(
   async (input) => {
     // maxTurns: AI가 여러 규정/법령을 도구로 검증하려면 호출 횟수가 많이 필요.
     // 기본값(5)으로는 부족해 중단되므로 넉넉히 상향.
-    const {output} = await prompt(input, {maxTurns: 10});
+    const {output} = await prompt(input, {maxTurns: 20});
     if (!output) {
       throw new Error('AI가 법령 영향 분석을 수행하지 못했습니다.');
     }
