@@ -8,6 +8,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {lawTools} from '@/ai/tools/law-tools';
 
 // 입력 스키마: 규정 정보
 const RegulationInfoSchema = z.object({
@@ -65,6 +66,7 @@ const prompt = ai.definePrompt({
   name: 'autoComplianceScanPrompt',
   input: {schema: AutoComplianceScanInputSchema},
   output: {schema: AutoComplianceScanOutputSchema},
+  tools: lawTools,
   prompt: `당신은 대한민국 법률 및 컴플라이언스 전문가입니다.
 아래 사내 규정들을 검토하여 현행 법령에 어긋나거나 개정이 필요한 부분을 찾아주세요.
 
@@ -84,6 +86,40 @@ const prompt = ai.definePrompt({
 {{/each}}
 --- 규정 목록 끝 ---
 
+🔍 **사용 가능한 도구**
+- searchLaw(query): 한국 법령정보센터 검색 → 실제 존재 여부와 mst 확인.
+- getLawText(mst): 해당 법령의 실제 조문 본문을 그대로 받음.
+
+🚨 **환각 방지 — STRICT MODE 규칙 (어기면 답변 무효)**
+**자동 스캔은 입력 법령 텍스트가 없기 때문에 모든 법령 인용은 반드시 도구로 검증해야 합니다.**
+
+**규칙 1. 인용 가능한 텍스트의 출처는 단 하나 — getLawText 응답 본문뿐입니다.**
+- getLawText 가 돌려준 본문에 실제로 존재하는 문장·조문번호만 sourceArticle 에 사용.
+- 그 외의 어떤 텍스트도 만들지 마십시오.
+
+**규칙 2. 조문 번호 환각 금지.**
+- "제○조" 같은 표기를 만들기 전, getLawText 응답 본문에서 그 조문 번호 문자열이 실제로 발견되는지 확인.
+- 응답에 그 조문 번호가 없으면 그 표현 자체를 만들지 마십시오.
+
+**규칙 3. 패러프레이즈 금지.**
+- 본문의 숫자(시간·일수·인원 기준), 일자, 기준치는 절대 임의로 바꾸지 말고 원문 그대로 인용.
+
+**규칙 4. 검증 실패 시 처리.**
+- 검증할 수 없는 조항이면 sourceArticle="[미검증]", reason 에 "관련 법령 조항을 법령 DB에서 직접 확인하지 못했습니다" 명시.
+- 검증 실패가 잦은 항목은 결과에서 제외하는 것이 낫습니다.
+
+**규칙 5. 시행일자 확인.**
+- searchLaw 결과의 effectiveDate 가 미래(현재 시점 이후)이거나 너무 오래된 법령은 신중히 사용.
+
+❌ **나쁜 예 (절대 금지)**
+- getLawText 호출 없이 "○○법 제○조" 같은 그럴듯한 조항 번호를 만들기.
+- getLawText 응답 숫자를 임의로 바꿔 적기 (예: 본문 "60시간" → 인용 "52시간").
+- 아래 "예시 출력" 의 조문번호·문구를 검증 없이 그대로 모방하기.
+
+✅ **좋은 예**
+- searchLaw("근로기준법") → mst 확인 → getLawText(mst) → 본문에 "제○조(○○)" 가 실제로 있음 → sourceArticle 에 그 문구 원문 그대로 인용.
+- getLawText 응답에 해당 조문이 없음 → sourceArticle="[미검증]" + reason 에 미검증 사실 명시.
+
 분석 지침:
 
 1. 각 규정을 순차적으로 검토하여 현행 법령과의 충돌/미준수 가능성을 파악하십시오.
@@ -95,7 +131,7 @@ const prompt = ai.definePrompt({
 
 3. reason(개정 필요 사유): 왜 이 규정이 문제인지, 어떤 부분이 법령에 어긋나는지 구체적으로 설명하십시오.
 
-4. sourceArticle(관련 법령): 해당 문제와 관련된 법령 조문을 가능한 정확하게 인용하십시오.
+4. sourceArticle(관련 법령): 해당 문제와 관련된 법령 조문을 정확하게 인용하십시오. (위 환각 방지 원칙 준수 — 반드시 도구로 검증된 조문만)
    예: "근로기준법 제50조(근로시간)에 따르면 1주 근로시간은 휴게시간을 제외하고 40시간을 초과할 수 없다."
 
 5. diff(차이점): 현행 규정과 법령 요구사항의 핵심 차이를 간략히 정리하십시오.
@@ -107,19 +143,37 @@ const prompt = ai.definePrompt({
 
 반드시 한국어로 답변하십시오.
 
-예시 출력:
+예시 출력 (형식만 참고. sourceArticle 안의 조문번호/문구는 절대 그대로 모방하지 말 것 — 반드시 도구로 검증한 실제 본문만 사용):
+
+[검증 성공 예]
 {
   "impactedRegulations": [
     {
-      "regulationId": "abc123",
-      "regulationName": "취업규칙",
+      "regulationId": "<규정ID>",
+      "regulationName": "<규정명>",
       "impactLevel": "HIGH",
-      "reason": "현행 취업규칙에 직장 내 괴롭힘 예방교육 관련 조항이 누락되어 있음. 2019년 개정 근로기준법에 따라 모든 사업장은 직장 내 괴롭힘 예방 및 대응 조치를 취업규칙에 명시해야 함.",
-      "sourceArticle": "근로기준법 제93조 제11호: 취업규칙에 '직장 내 괴롭힘의 예방 및 발생 시 조치 등에 관한 사항'을 필수 기재",
-      "diff": "현행 규정: 직장 내 괴롭힘 관련 조항 없음 / 법령 요구: 예방교육, 신고절차, 조치사항 명시 필요"
+      "reason": "<구체적 사유>",
+      "sourceArticle": "<getLawText 응답에서 실제로 발견된 조문번호와 원문 일부를 그대로 인용>",
+      "diff": "현행 규정: <원문> / 법령 요구: <원문>"
     }
   ],
-  "summary": "총 3개 규정 중 1개 규정(취업규칙)에서 법령 위반 가능성이 발견되었습니다. 직장 내 괴롭힘 관련 조항의 신설이 시급합니다.",
+  "summary": "<2-3문장 요약>",
+  "scanTimestamp": ""
+}
+
+[검증 실패 예]
+{
+  "impactedRegulations": [
+    {
+      "regulationId": "<규정ID>",
+      "regulationName": "<규정명>",
+      "impactLevel": "MEDIUM",
+      "reason": "관련 법령 조항을 법령 DB에서 직접 확인하지 못했습니다.",
+      "sourceArticle": "[미검증]",
+      "diff": ""
+    }
+  ],
+  "summary": "...",
   "scanTimestamp": ""
 }
 `,
@@ -132,7 +186,9 @@ const autoComplianceScanFlow = ai.defineFlow(
     outputSchema: AutoComplianceScanOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
+    // maxTurns: AI가 여러 규정/법령을 도구로 검증하려면 호출 횟수가 많이 필요.
+    // 기본값(5)으로는 부족해 중단되므로 넉넉히 상향.
+    const {output} = await prompt(input, {maxTurns: 10});
     if (!output) {
       throw new Error('AI가 컴플라이언스 스캔을 수행하지 못했습니다.');
     }
