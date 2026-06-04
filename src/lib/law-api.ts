@@ -18,6 +18,34 @@ function getOC(): string {
   return oc;
 }
 
+/**
+ * law.go.kr 은 종종 일시적으로 연결을 끊는다(ECONNRESET 등).
+ * 실패 시 짧게 기다렸다가 재시도해 일시적 네트워크 오류를 흡수한다.
+ *
+ * @param url 호출할 URL
+ * @param retries 추가 재시도 횟수 (기본 2회 → 최대 3번 시도)
+ */
+async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url);
+      // 5xx(서버 오류)면 재시도할 가치가 있음. 4xx는 그대로 반환(키/요청 문제).
+      if (res.ok || res.status < 500) {
+        return res;
+      }
+      lastError = new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      lastError = e;
+    }
+    // 마지막 시도가 아니면 잠깐 대기 후 재시도 (0.5s, 1s ...)
+    if (attempt < retries) {
+      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 // ============================================================================
 // 타입
 // ============================================================================
@@ -71,7 +99,7 @@ export async function searchLaw(
   });
 
   const url = `${LAW_API_BASE}/lawSearch.do?${params.toString()}`;
-  const res = await fetch(url);
+  const res = await fetchWithRetry(url);
 
   if (!res.ok) {
     throw new Error(`법령 검색 실패 (HTTP ${res.status}): ${url}`);
@@ -116,9 +144,9 @@ function parseSearchResponse(data: unknown): LawSearchResult[] {
  * 환각 방지: AI 가 인용한 조문이 실제 본문에 있는지 대조하는 데 사용.
  *
  * @param mst searchLaw 결과의 mst (법령일련번호)
- * @param maxChars 본문 최대 길이 (AI 컨텍스트 보호용, 기본 8000자)
+ * @param maxChars 본문 최대 길이 (환각 방지를 위해 넉넉히. 기본 50000자)
  */
-export async function getLawText(mst: string, maxChars = 8000): Promise<LawTextResult> {
+export async function getLawText(mst: string, maxChars = 50000): Promise<LawTextResult> {
   const oc = getOC();
   const params = new URLSearchParams({
     OC: oc,
@@ -128,7 +156,7 @@ export async function getLawText(mst: string, maxChars = 8000): Promise<LawTextR
   });
 
   const url = `${LAW_API_BASE}/lawService.do?${params.toString()}`;
-  const res = await fetch(url);
+  const res = await fetchWithRetry(url);
 
   if (!res.ok) {
     throw new Error(`법령 본문 조회 실패 (HTTP ${res.status}): mst=${mst}`);
@@ -161,14 +189,50 @@ function parseLawTextResponse(data: unknown, maxChars: number): LawTextResult {
   for (const art of articles) {
     const num = String(art.조문번호 ?? '');
     const title = String(art.조문제목 ?? '');
-    const content = String(art.조문내용 ?? '');
+    // 조문내용은 보통 제목만 들어있고, 실제 본문은 '항' 배열의 '항내용'에 있다.
     const head = title ? `제${num}조(${title})` : `제${num}조`;
-    parts.push(`${head}\n${content}`.trim());
+    const lines: string[] = [head];
+
+    // 항(項) 펼치기
+    const hangRaw = (art as Record<string, unknown>).항;
+    const hangs: Array<Record<string, unknown>> = Array.isArray(hangRaw)
+      ? (hangRaw as Array<Record<string, unknown>>)
+      : hangRaw
+        ? [hangRaw as Record<string, unknown>]
+        : [];
+
+    if (hangs.length > 0) {
+      for (const hang of hangs) {
+        const hangText = String(hang.항내용 ?? '').trim();
+        if (hangText) lines.push(hangText);
+
+        // 호(號) 펼치기
+        const hoRaw = hang.호;
+        const hos: Array<Record<string, unknown>> = Array.isArray(hoRaw)
+          ? (hoRaw as Array<Record<string, unknown>>)
+          : hoRaw
+            ? [hoRaw as Record<string, unknown>]
+            : [];
+        for (const ho of hos) {
+          const hoText = String(ho.호내용 ?? '').trim();
+          if (hoText) lines.push('  ' + hoText);
+        }
+      }
+    } else {
+      // 항이 없으면 조문내용을 그대로 사용 (제목+본문이 한 덩어리인 경우)
+      const content = String(art.조문내용 ?? '').trim();
+      if (content && content !== head) lines.push(content);
+    }
+
+    parts.push(lines.join('\n').trim());
   }
 
   let fullText = parts.join('\n\n').trim();
   if (fullText.length > maxChars) {
-    fullText = fullText.slice(0, maxChars) + '\n... [본문 일부 생략됨]';
+    fullText =
+      fullText.slice(0, maxChars) +
+      '\n\n⚠️ [경고: 법령 본문이 너무 길어 이 지점 이후가 생략되었습니다. ' +
+      '생략된 뒷부분 조항은 이 응답으로 확인할 수 없으므로, 해당 조항을 인용해야 한다면 검증되지 않은 것으로 취급하십시오.]';
   }
 
   return { name, fullText };

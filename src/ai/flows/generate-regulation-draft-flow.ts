@@ -9,6 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {lawTools} from '@/ai/tools/law-tools';
 
 const ComparisonItemSchema = z.object({
   section: z.string().describe('The section or article name/number (e.g., "제 12조 (비용 청구)")'),
@@ -48,10 +49,22 @@ const prompt = ai.definePrompt({
   name: 'generateRegulationDraftPrompt',
   input: {schema: GenerateRegulationDraftInputSchema},
   output: {schema: GenerateRegulationDraftOutputSchema},
+  tools: lawTools,
   prompt: `You are an expert compliance officer. Your task is to generate a 'Before vs. After' comparison for a regulation revision based on a new directive.
 
 Instead of the full text, focus ONLY on the sections that need to be changed or added.
 Identify the specific articles or sections from the existing content that are affected.
+
+🔍 **Available tools (use them — this output becomes an official approval document, so legal accuracy is critical):**
+- searchLaw(query): Search the Korea Law Information Center for a statute; confirms it exists and returns its mst.
+- getLawText(mst): Fetch the actual article text of a statute (use the mst from searchLaw).
+
+🚨 **ANTI-HALLUCINATION — STRICT RULES (output is invalid if violated):**
+1. Any statute name, article number (제○조), clause (제○항), or legal text you cite in 'rationale' or 'after' MUST first be verified: call searchLaw, then getLawText, and confirm the exact article/clause actually appears in the returned text.
+2. Never invent or guess an article number. If getLawText does not contain that article, do not write it.
+3. Do not paraphrase legal numbers, dates, durations, or thresholds — quote them exactly as they appear in getLawText.
+4. Pay attention to the precise scope of a provision (e.g., "the leave period under paragraph 2" means only the statutory leave, not voluntary extra leave). Do not over-generalize.
+5. If you cannot verify a legal basis through the tools, state in 'rationale' that the legal basis could not be confirmed from the law database, rather than fabricating a citation.
 
 --- Start of Context ---
 New Law/Directive:
@@ -94,7 +107,7 @@ Instructions for output:
 
 Ensure the output is in Korean.
 
-Example output structure:
+Example output structure (FORMAT ONLY — do NOT copy the article numbers or legal text below; cite only tool-verified text):
 {
   "comparisonTable": [
     {
@@ -116,7 +129,8 @@ const generateRegulationDraftFlow = ai.defineFlow(
     outputSchema: GenerateRegulationDraftOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
+    // maxTurns: 법령 검증 도구를 여러 번 호출할 수 있도록 한도 상향 (스캔 흐름과 동일).
+    const {output} = await prompt(input, {maxTurns: 20});
     if (!output) {
       throw new Error('AI가 개정안 비교표를 생성하지 못했습니다.');
     }
