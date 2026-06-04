@@ -127,6 +127,21 @@ ${initialRequest.diff}`;
     }
   }, [initialRequest]);
 
+  // ID 보정 (별도 effect): regulations 가 늦게 로드되거나 AI가 ID를 비우/틀리게 준 경우,
+  // 규정명으로 실제 목록에서 진짜 ID를 찾아 자동 선택을 복구한다.
+  // 이 effect 는 selectedRegId 만 건드려서 사용자의 입력/결과를 초기화하지 않는다.
+  useEffect(() => {
+    if (!initialRequest || !regulations) return;
+    const existsById = regulations.some((r) => r.id === selectedRegId);
+    if (existsById) return; // 이미 올바르게 선택돼 있으면 그대로 둔다.
+    const matched =
+      regulations.find((r) => r.id === initialRequest.regulationId) ??
+      regulations.find((r) => r.fileName === initialRequest.regulationName);
+    if (matched) {
+      setSelectedRegId(matched.id);
+    }
+  }, [initialRequest, regulations, selectedRegId]);
+
   // 개정안 저장
   const saveDraft = async (output: GenerateRegulationDraftOutput, isUpgrade: boolean) => {
     if (!user || !draftsRef) return;

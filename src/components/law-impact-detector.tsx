@@ -552,13 +552,20 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
                         <Button
                           variant="default"
                           className="w-full"
-                          onClick={() => onRequestRevision?.({
-                            regulationId: impact.regulationId,
-                            regulationName: impact.regulationName,
-                            reason: impact.reason,
-                            sourceArticle: impact.sourceArticle,
-                            diff: impact.diff,
-                          })}
+                          onClick={() => {
+                            // AI가 출력한 regulationId가 비거나 실제 목록과 안 맞을 수 있으므로
+                            // 실제 규정 목록(regulations)에서 ID 또는 이름으로 매칭해 보정한다.
+                            const matched =
+                              regulations?.find((r) => r.id === impact.regulationId) ??
+                              regulations?.find((r) => r.fileName === impact.regulationName);
+                            onRequestRevision?.({
+                              regulationId: matched?.id ?? impact.regulationId,
+                              regulationName: matched?.fileName ?? impact.regulationName,
+                              reason: impact.reason,
+                              sourceArticle: impact.sourceArticle,
+                              diff: impact.diff,
+                            });
+                          }}
                         >
                           <PenTool className="w-4 h-4 mr-2" />
                           개정안 추천
