@@ -106,6 +106,8 @@ export async function searchLaw(
   });
 
   const url = `${LAW_API_BASE}/lawSearch.do?${params.toString()}`;
+  // 진단: 실제 요청 URL (OC 값만 가림) — "필수 입력값 없음" 원인 추적용
+  console.log(`[searchLaw] 요청 URL: ${url.replace(oc, 'OC_HIDDEN')}`);
   const res = await fetchWithRetry(url);
 
   if (!res.ok) {
