@@ -68,6 +68,8 @@ const prompt = ai.definePrompt({
   input: {schema: AutoComplianceScanInputSchema},
   output: {schema: AutoComplianceScanOutputSchema},
   tools: lawTools,
+  // temperature 0: 무작위성 최소화 → 변경점 누락 없이 일관된 결과 유도
+  config: {temperature: 0},
   prompt: `당신은 대한민국 법률 및 컴플라이언스 전문가입니다.
 아래 사내 규정들을 검토하여 현행 법령에 어긋나거나 개정이 필요한 부분을 찾아주세요.
 

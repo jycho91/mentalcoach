@@ -70,6 +70,8 @@ const prompt = ai.definePrompt({
   input: {schema: DetectLawImpactInputSchema},
   output: {schema: DetectLawImpactOutputSchema},
   tools: lawTools,
+  // temperature 0: 무작위성 최소화 → 변경점 누락 없이 일관된 결과 유도
+  config: {temperature: 0},
   prompt: `당신은 기업의 법무/컴플라이언스 전문가입니다. 새로운 법령이 사내 규정에 미치는 영향을 분석합니다.
 
 --- 분석 대상 법령 ---

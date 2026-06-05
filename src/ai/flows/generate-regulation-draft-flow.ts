@@ -51,6 +51,8 @@ const prompt = ai.definePrompt({
   input: {schema: GenerateRegulationDraftInputSchema},
   output: {schema: GenerateRegulationDraftOutputSchema},
   tools: lawTools,
+  // temperature 0: 무작위성 최소화 → 변경점 누락 없이 일관된 결과 유도
+  config: {temperature: 0},
   prompt: `You are an expert compliance officer. Your task is to generate a 'Before vs. After' comparison for a regulation revision based on a new directive.
 
 Instead of the full text, focus ONLY on the sections that need to be changed or added.
