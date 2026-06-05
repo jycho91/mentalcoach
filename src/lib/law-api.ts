@@ -9,14 +9,8 @@
 const LAW_API_BASE = 'https://www.law.go.kr/DRF';
 
 function getOC(): string {
-  const rawOc = process.env.LAW_OC;
-  // 진단: OC 가 어떻게 들어오는지 (존재 여부, 길이, 앞뒤 공백/따옴표 흔적) 확인
-  console.log(
-    `[getOC] LAW_OC 존재=${rawOc !== undefined}, ` +
-      `길이=${rawOc ? rawOc.length : 0}, ` +
-      `값미리보기="${rawOc ? rawOc.slice(0, 3) + '...' : '(없음)'}"`
-  );
-  const oc = rawOc?.trim();
+  // 앞뒤 공백 제거 (환경변수 복붙 시 끼는 공백/줄바꿈 방어)
+  const oc = process.env.LAW_OC?.trim();
   if (!oc) {
     throw new Error(
       'LAW_OC 환경변수가 설정되지 않았습니다. .env 또는 배포 환경에 등록하세요.'
@@ -110,41 +104,23 @@ export async function searchLaw(
   });
 
   const url = `${LAW_API_BASE}/lawSearch.do?${params.toString()}`;
-  // 진단: 실제 요청 URL (OC 값만 가림) — "필수 입력값 없음" 원인 추적용
-  console.log(`[searchLaw] 요청 URL: ${url.replace(oc, 'OC_HIDDEN')}`);
-  // 진단: 이 서버(배포 환경)의 외부 IP 확인 — law.go.kr 에 등록할 IP 알아내기용
-  try {
-    const ipRes = await fetch('https://api.ipify.org?format=json');
-    const ipJson = (await ipRes.json()) as { ip?: string };
-    console.log(`[searchLaw] 🌐 이 서버의 외부 IP = ${ipJson.ip}`);
-  } catch (e) {
-    console.log('[searchLaw] 외부 IP 조회 실패:', e);
-  }
   const res = await fetchWithRetry(url);
 
   if (!res.ok) {
-    throw new Error(`법령 검색 실패 (HTTP ${res.status}): ${url}`);
+    throw new Error(`법령 검색 실패 (HTTP ${res.status})`);
   }
 
-  // law.go.kr 은 인증 실패 등에서 JSON 이 아닌 응답을 주기도 한다.
-  // 원문을 받아 진단 로그를 남기고, 안전하게 파싱한다.
+  // law.go.kr 은 인증 실패 등에서 JSON 이 아닌 응답을 주기도 하므로 안전하게 파싱.
   const raw = await res.text();
   let data: unknown;
   try {
     data = JSON.parse(raw);
   } catch {
-    // JSON 파싱 실패 = 정상 데이터가 아님 (인증 실패/HTML/XML 등)
-    console.error(
-      `[searchLaw] JSON 아님 — 응답 원문 앞 300자: ${raw.slice(0, 300)}`
-    );
+    // JSON 파싱 실패 = 정상 데이터가 아님 (인증 실패/HTML 등) → 원인 파악용 로그
+    console.error(`[searchLaw] 응답이 JSON이 아님: ${raw.slice(0, 200)}`);
     return [];
   }
-  const results = parseSearchResponse(data);
-  if (results.length === 0) {
-    // 0건일 때 원문을 남겨, "진짜 0건"인지 "인증 실패"인지 구분 가능하게
-    console.error(`[searchLaw] 0건 — 응답 원문 앞 300자: ${raw.slice(0, 300)}`);
-  }
-  return results;
+  return parseSearchResponse(data);
 }
 
 interface RawLawItem {
