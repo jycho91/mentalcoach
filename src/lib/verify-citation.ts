@@ -43,6 +43,99 @@ function normalize(text: string): string {
   return text.replace(/\s+/g, '');
 }
 
+/** 인용에서 항 번호(①②③④ 또는 "제2항")를 추출 */
+function extractClauseNumbers(citation: string): number[] {
+  const nums = new Set<number>();
+  // 원문자 ①~⑮
+  const circled = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮';
+  for (const ch of citation) {
+    const idx = circled.indexOf(ch);
+    if (idx >= 0) nums.add(idx + 1);
+  }
+  // "제N항" 형태
+  const m = citation.matchAll(/제\s*(\d+)\s*항/g);
+  for (const x of m) nums.add(Number(x[1]));
+  return Array.from(nums);
+}
+
+/**
+ * 본문에서 특정 항(項)의 텍스트 한 덩어리를 잘라낸다.
+ * (해당 항 원문자부터 다음 항 원문자 전까지)
+ */
+function extractClauseBody(fullText: string, clauseNum: number): string | null {
+  const circled = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮';
+  const mark = circled[clauseNum - 1];
+  if (!mark) return null;
+  const start = fullText.indexOf(mark);
+  if (start < 0) return null;
+  // 다음 항 마커 위치 찾기
+  const nextMark = circled[clauseNum];
+  let end = nextMark ? fullText.indexOf(nextMark, start + 1) : -1;
+  if (end < 0) end = Math.min(fullText.length, start + 500); // 못 찾으면 적당히 자름
+  return fullText.slice(start, end);
+}
+
+/**
+ * 본문에서 특정 조(條) 영역만 잘라낸다. (예: 제19조 ~ 제19조의2 직전)
+ * 같은 ②가 법 전체에 여러 개 있으므로, 항을 찾기 전 조 영역으로 먼저 좁힌다.
+ */
+function extractArticleRegion(fullText: string, articleNum: number): string | null {
+  // "제19조(" 또는 "제19조\n" 형태로 시작 지점 찾기
+  const startRe = new RegExp(`제${articleNum}조(?![0-9의])`);
+  const startM = fullText.match(startRe);
+  if (!startM || startM.index === undefined) return null;
+  const start = startM.index;
+  // 다음 조(제20조 등) 또는 제19조의2 시작 전까지
+  const after = fullText.slice(start + 1);
+  const nextRe = new RegExp(`제${articleNum}조의|제${articleNum + 1}조`);
+  const nextM = after.match(nextRe);
+  const end = nextM && nextM.index !== undefined ? start + 1 + nextM.index : fullText.length;
+  return fullText.slice(start, end);
+}
+
+/**
+ * 단서 누락 검출: 인용이 참조한 항(예: 제2항)의 실제 본문에
+ * "다만" 단서나 추가 수치가 있는데 인용에서 빠졌으면 경고.
+ * (육아휴직 제2항 "1년 이내" 만 적고 "다만 6개월 추가" 누락하는 패턴 대응)
+ */
+function detectMissingProviso(
+  citation: string,
+  fullText: string
+): string | null {
+  const clauseNums = extractClauseNumbers(citation);
+  if (clauseNums.length === 0) return null;
+
+  // 인용에서 조(條) 번호 추출 → 본문을 해당 조 영역으로 좁힘 (오탐 방지 핵심)
+  const artM = citation.match(/제\s*(\d+)\s*조/);
+  const searchBody = artM
+    ? extractArticleRegion(fullText, Number(artM[1])) ?? fullText
+    : fullText;
+
+  const normCitation = normalize(citation);
+  for (const num of clauseNums) {
+    const clauseBody = extractClauseBody(searchBody, num);
+    if (!clauseBody) continue;
+    // 본문 해당 항에 "다만" 단서가 있는가?
+    if (clauseBody.includes('다만')) {
+      // 인용에 "다만"이 없으면 누락 의심
+      if (!normCitation.includes('다만')) {
+        // 단서에 들어있는 수치 중 인용에 빠진 것 찾기
+        const provisoNums =
+          (clauseBody.split('다만')[1] || '').match(
+            /\d+\s*(일|회|개월|년|시간|세|명|원|%)/g
+          ) || [];
+        const missingProviso = provisoNums
+          .map((t) => t.replace(/\s+/g, ''))
+          .filter((t) => !normCitation.includes(t));
+        const detail =
+          missingProviso.length > 0 ? ` (예: ${missingProviso.join(', ')})` : '';
+        return `제${num}항에 '다만' 단서(예외 조항)가 있으나 인용에서 누락된 것으로 보입니다${detail}. 원문 재확인이 필요합니다.`;
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * 하나의 인용(sourceArticle)을 실제 법령 본문과 대조한다.
  *
@@ -81,7 +174,7 @@ export async function verifyCitation(citation: string): Promise<CitationVerifyRe
       return { checked: true, consistent: true, note: '' };
     }
 
-    // 인용된 숫자 중 본문에 없는 게 있으면 불일치
+    // 인용된 숫자 중 본문에 없는 게 있으면 불일치 (환각 검출)
     const missing = numbers.filter((n) => !normalizedBody.includes(normalize(n)));
     if (missing.length > 0) {
       return {
@@ -89,6 +182,12 @@ export async function verifyCitation(citation: string): Promise<CitationVerifyRe
         consistent: false,
         note: `인용에 사용된 수치(${missing.join(', ')})가 실제 법령 본문에서 확인되지 않습니다. 원문 재확인이 필요합니다.`,
       };
+    }
+
+    // 단서(다만) 누락 검출 — "1년 이내"만 적고 "다만 6개월 추가"를 빠뜨린 경우
+    const provisoNote = detectMissingProviso(citation, body.fullText);
+    if (provisoNote) {
+      return { checked: true, consistent: false, note: provisoNote };
     }
 
     return { checked: true, consistent: true, note: '' };
