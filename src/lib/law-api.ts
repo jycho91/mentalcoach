@@ -9,7 +9,14 @@
 const LAW_API_BASE = 'https://www.law.go.kr/DRF';
 
 function getOC(): string {
-  const oc = process.env.LAW_OC;
+  const rawOc = process.env.LAW_OC;
+  // 진단: OC 가 어떻게 들어오는지 (존재 여부, 길이, 앞뒤 공백/따옴표 흔적) 확인
+  console.log(
+    `[getOC] LAW_OC 존재=${rawOc !== undefined}, ` +
+      `길이=${rawOc ? rawOc.length : 0}, ` +
+      `값미리보기="${rawOc ? rawOc.slice(0, 3) + '...' : '(없음)'}"`
+  );
+  const oc = rawOc?.trim();
   if (!oc) {
     throw new Error(
       'LAW_OC 환경변수가 설정되지 않았습니다. .env 또는 배포 환경에 등록하세요.'
