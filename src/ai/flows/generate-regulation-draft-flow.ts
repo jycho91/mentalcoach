@@ -51,8 +51,8 @@ const prompt = ai.definePrompt({
   input: {schema: GenerateRegulationDraftInputSchema},
   output: {schema: GenerateRegulationDraftOutputSchema},
   tools: lawTools,
-  // temperature 0: 무작위성 최소화 → 변경점 누락 없이 일관된 결과 유도
-  config: {temperature: 0},
+  // temperature 0.3: 무작위성 낮춰 변경점 누락 줄이되 과도하게 경직되지 않게
+  config: {temperature: 0.3},
   prompt: `You are an expert compliance officer. Your task is to generate a 'Before vs. After' comparison for a regulation revision based on a new directive.
 
 Instead of the full text, focus ONLY on the sections that need to be changed or added.
@@ -74,6 +74,8 @@ Identify the specific articles or sections from the existing content that are af
 6. If you cannot verify a legal basis through the tools, state in 'rationale' that the legal basis could not be confirmed from the law database, rather than fabricating a citation.
 
 7. **CHECK EVERY CLAUSE OF THE ARTICLE — very important.** When an article (e.g., 제18조의2) is relevant, examine ALL of its clauses (①②③④...) one by one against the company regulation. If a single article has multiple changes, include EVERY one in the comparisonTable — do not stop after finding the first. (e.g., if 배우자 출산휴가 changed both "제1항: 20일" AND "제4항: 분할 3회", reflect BOTH changes.) Any clause whose number (days, count, period, amount) differs from the current rule must be included. Missing one undermines this approval document. Read the article top to bottom completely.
+
+8. **VERIFY AGAINST THE LAW YOURSELF — do not blindly trust the directive text.** The "New Law/Directive" text you receive may be a summary from an earlier scan and may have MISSED some changes. Therefore, when the directive mentions a statute (e.g., 배우자 출산휴가 → 남녀고용평등법 제18조의2), independently call searchLaw + getLawText, read that article's full text, and cross-check EVERY clause against the company regulation yourself. If you find additional changes the directive did not mention (e.g., directive only said "분할 3회" but the law also changed "10일 → 20일"), you MUST include those too. The law text from getLawText is the source of truth, not the directive summary.
 
 --- Start of Context ---
 New Law/Directive:
