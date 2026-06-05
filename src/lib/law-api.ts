@@ -105,8 +105,25 @@ export async function searchLaw(
     throw new Error(`법령 검색 실패 (HTTP ${res.status}): ${url}`);
   }
 
-  const data = (await res.json()) as unknown;
-  return parseSearchResponse(data);
+  // law.go.kr 은 인증 실패 등에서 JSON 이 아닌 응답을 주기도 한다.
+  // 원문을 받아 진단 로그를 남기고, 안전하게 파싱한다.
+  const raw = await res.text();
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    // JSON 파싱 실패 = 정상 데이터가 아님 (인증 실패/HTML/XML 등)
+    console.error(
+      `[searchLaw] JSON 아님 — 응답 원문 앞 300자: ${raw.slice(0, 300)}`
+    );
+    return [];
+  }
+  const results = parseSearchResponse(data);
+  if (results.length === 0) {
+    // 0건일 때 원문을 남겨, "진짜 0건"인지 "인증 실패"인지 구분 가능하게
+    console.error(`[searchLaw] 0건 — 응답 원문 앞 300자: ${raw.slice(0, 300)}`);
+  }
+  return results;
 }
 
 interface RawLawItem {
