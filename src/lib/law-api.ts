@@ -144,9 +144,9 @@ function parseSearchResponse(data: unknown): LawSearchResult[] {
  * 환각 방지: AI 가 인용한 조문이 실제 본문에 있는지 대조하는 데 사용.
  *
  * @param mst searchLaw 결과의 mst (법령일련번호)
- * @param maxChars 본문 최대 길이 (환각 방지를 위해 넉넉히. 기본 50000자)
+ * @param maxChars 본문 최대 길이. 너무 크면 컨텍스트 폭발로 모델이 빈 응답을 내므로 균형값 사용. 기본 30000자.
  */
-export async function getLawText(mst: string, maxChars = 50000): Promise<LawTextResult> {
+export async function getLawText(mst: string, maxChars = 30000): Promise<LawTextResult> {
   const oc = getOC();
   const params = new URLSearchParams({
     OC: oc,

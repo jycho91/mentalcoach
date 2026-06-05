@@ -10,6 +10,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import {lawTools} from '@/ai/tools/law-tools';
+import {runPromptWithRetry} from '@/ai/flows/_run-with-retry';
 
 // 입력 스키마: 규정 정보
 const RegulationInfoSchema = z.object({
@@ -194,12 +195,8 @@ const detectLawImpactFlow = ai.defineFlow(
     outputSchema: DetectLawImpactOutputSchema,
   },
   async (input) => {
-    // maxTurns: AI가 여러 규정/법령을 도구로 검증하려면 호출 횟수가 많이 필요.
-    // 기본값(5)으로는 부족해 중단되므로 넉넉히 상향.
-    const {output} = await prompt(input, {maxTurns: 20});
-    if (!output) {
-      throw new Error('AI가 법령 영향 분석을 수행하지 못했습니다.');
-    }
-    return output;
+    // maxTurns: 도구로 여러 법령을 검증할 수 있도록 상향.
+    // runPromptWithRetry: 모델이 빈 응답(null)을 줄 경우 자동 재시도.
+    return await runPromptWithRetry(prompt, input, {maxTurns: 20});
   }
 );

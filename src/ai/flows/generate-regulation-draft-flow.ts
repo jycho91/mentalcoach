@@ -10,6 +10,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import {lawTools} from '@/ai/tools/law-tools';
+import {runPromptWithRetry} from '@/ai/flows/_run-with-retry';
 
 const ComparisonItemSchema = z.object({
   section: z.string().describe('The section or article name/number (e.g., "제 12조 (비용 청구)")'),
@@ -133,11 +134,8 @@ const generateRegulationDraftFlow = ai.defineFlow(
     outputSchema: GenerateRegulationDraftOutputSchema,
   },
   async (input) => {
-    // maxTurns: 법령 검증 도구를 여러 번 호출할 수 있도록 한도 상향 (스캔 흐름과 동일).
-    const {output} = await prompt(input, {maxTurns: 20});
-    if (!output) {
-      throw new Error('AI가 개정안 비교표를 생성하지 못했습니다.');
-    }
-    return output!;
+    // maxTurns: 법령 검증 도구를 여러 번 호출할 수 있도록 한도 상향.
+    // runPromptWithRetry: 모델이 빈 응답(null)을 줄 경우 자동 재시도.
+    return await runPromptWithRetry(prompt, input, {maxTurns: 20});
   }
 );
