@@ -216,11 +216,13 @@ const autoComplianceScanFlow = ai.defineFlow(
       output.impactedRegulations.map(async (reg) => {
         try {
           const v = await verifyCitation(reg.sourceArticle);
-          if (v.checked && !v.consistent && v.note) {
+          if (v.status === 'mismatch' && v.note) {
             reg.sourceArticle = `${reg.sourceArticle}\n⚠️ [자동검증] ${v.note}`;
+          } else if (v.status === 'unverifiable' && v.note) {
+            reg.sourceArticle = `${reg.sourceArticle}\nℹ️ [자동검증 미수행] ${v.note}`;
           }
         } catch {
-          // 검증 실패는 결과에 영향 주지 않음 (무시)
+          // 검증 자체 오류는 결과에 영향 주지 않음 (무시)
         }
       })
     );

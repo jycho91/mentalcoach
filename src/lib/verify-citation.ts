@@ -13,12 +13,21 @@
 import { searchLaw, getLawText } from '@/lib/law-api';
 
 export interface CitationVerifyResult {
-  /** 검증 수행 가능 여부 (법령 본문을 가져왔는지) */
-  checked: boolean;
-  /** 인용이 본문과 일치하는지 (checked=false면 의미 없음) */
-  consistent: boolean;
+  /**
+   * 검증 상태
+   * - 'ok': 검증 완료, 본문과 일치
+   * - 'mismatch': 검증 완료, 본문과 불일치(환각·단서누락 등)
+   * - 'unverifiable': 검증 시도했으나 법령 조회 실패 등으로 확인 불가
+   * - 'skip': 검증 대상 아님(이미 [미검증] 표시, 법령명 추출 불가 등) → 표시 안 함
+   */
+  status: 'ok' | 'mismatch' | 'unverifiable' | 'skip';
   /** 사람이 읽을 경고 메시지 (문제 있을 때만 채워짐) */
   note: string;
+  // ↓ 하위호환용 (기존 호출부가 쓰던 필드)
+  /** @deprecated status 사용 권장 */
+  checked: boolean;
+  /** @deprecated status 사용 권장 */
+  consistent: boolean;
 }
 
 /** 인용 문자열에서 법령명을 추출 (예: "남녀고용평등...법률 제18조..." → 법령명) */
@@ -141,58 +150,75 @@ function detectMissingProviso(
  *
  * @param citation AI가 인용한 조문 텍스트 (sourceArticle)
  */
+// 결과 생성 헬퍼 (status → checked/consistent 하위호환 자동 채움)
+function mk(status: CitationVerifyResult['status'], note = ''): CitationVerifyResult {
+  return {
+    status,
+    note,
+    checked: status === 'ok' || status === 'mismatch',
+    consistent: status === 'ok',
+  };
+}
+
 export async function verifyCitation(citation: string): Promise<CitationVerifyResult> {
-  // 이미 미검증으로 표시된 건 검사 불필요
+  // 이미 미검증으로 표시된 건 검사 불필요 → 표시 안 함
   if (!citation || citation.includes('[미검증]')) {
-    return { checked: false, consistent: false, note: '' };
+    return mk('skip');
   }
 
   const lawName = extractLawName(citation);
   if (!lawName) {
-    // 법령명을 못 뽑으면 검증 스킵 (오탐 방지)
-    return { checked: false, consistent: false, note: '' };
+    // 법령명을 못 뽑으면 검증 스킵 (오탐 방지) → 표시 안 함
+    return mk('skip');
   }
 
   try {
     const results = await searchLaw(lawName, 1);
     if (results.length === 0) {
-      return {
-        checked: true,
-        consistent: false,
-        note: `법령 "${lawName}"을(를) 법령DB에서 찾지 못해 인용을 검증하지 못했습니다.`,
-      };
+      // 법령 검색 실패 → 검증 불가
+      return mk(
+        'unverifiable',
+        `법령 "${lawName}"을(를) 법령DB에서 조회하지 못해 자동 검증을 수행하지 못했습니다. 원문을 직접 확인하세요.`
+      );
     }
     const body = await getLawText(results[0].mst);
     if (!body.fullText) {
-      return { checked: false, consistent: false, note: '' };
+      // 본문 조회 실패 → 검증 불가
+      return mk(
+        'unverifiable',
+        '법령 본문을 가져오지 못해 자동 검증을 수행하지 못했습니다. 원문을 직접 확인하세요.'
+      );
     }
 
     const normalizedBody = normalize(body.fullText);
     const numbers = extractNumberTokens(citation);
     // 인용에 숫자가 없으면 (조문 존재만으로) 일치로 본다
     if (numbers.length === 0) {
-      return { checked: true, consistent: true, note: '' };
+      return mk('ok');
     }
 
     // 인용된 숫자 중 본문에 없는 게 있으면 불일치 (환각 검출)
     const missing = numbers.filter((n) => !normalizedBody.includes(normalize(n)));
     if (missing.length > 0) {
-      return {
-        checked: true,
-        consistent: false,
-        note: `인용에 사용된 수치(${missing.join(', ')})가 실제 법령 본문에서 확인되지 않습니다. 원문 재확인이 필요합니다.`,
-      };
+      return mk(
+        'mismatch',
+        `인용에 사용된 수치(${missing.join(', ')})가 실제 법령 본문에서 확인되지 않습니다. 원문 재확인이 필요합니다.`
+      );
     }
 
     // 단서(다만) 누락 검출 — "1년 이내"만 적고 "다만 6개월 추가"를 빠뜨린 경우
     const provisoNote = detectMissingProviso(citation, body.fullText);
     if (provisoNote) {
-      return { checked: true, consistent: false, note: provisoNote };
+      return mk('mismatch', provisoNote);
     }
 
-    return { checked: true, consistent: true, note: '' };
+    return mk('ok');
   } catch (e) {
+    // law.go.kr 연결 끊김(ECONNRESET) 등 → 검증 불가
     console.error('[verifyCitation] 검증 중 오류:', e);
-    return { checked: false, consistent: false, note: '' };
+    return mk(
+      'unverifiable',
+      '법령 서버 연결 오류로 자동 검증을 수행하지 못했습니다. 원문을 직접 확인하세요.'
+    );
   }
 }
