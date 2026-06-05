@@ -108,6 +108,14 @@ export async function searchLaw(
   const url = `${LAW_API_BASE}/lawSearch.do?${params.toString()}`;
   // 진단: 실제 요청 URL (OC 값만 가림) — "필수 입력값 없음" 원인 추적용
   console.log(`[searchLaw] 요청 URL: ${url.replace(oc, 'OC_HIDDEN')}`);
+  // 진단: 이 서버(배포 환경)의 외부 IP 확인 — law.go.kr 에 등록할 IP 알아내기용
+  try {
+    const ipRes = await fetch('https://api.ipify.org?format=json');
+    const ipJson = (await ipRes.json()) as { ip?: string };
+    console.log(`[searchLaw] 🌐 이 서버의 외부 IP = ${ipJson.ip}`);
+  } catch (e) {
+    console.log('[searchLaw] 외부 IP 조회 실패:', e);
+  }
   const res = await fetchWithRetry(url);
 
   if (!res.ok) {
