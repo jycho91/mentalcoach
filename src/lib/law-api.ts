@@ -144,9 +144,9 @@ function parseSearchResponse(data: unknown): LawSearchResult[] {
  * 환각 방지: AI 가 인용한 조문이 실제 본문에 있는지 대조하는 데 사용.
  *
  * @param mst searchLaw 결과의 mst (법령일련번호)
- * @param maxChars 본문 최대 길이. 너무 크면 컨텍스트 폭발로 모델이 빈 응답을 내므로 균형값 사용. 기본 30000자.
+ * @param maxChars 본문 최대 길이. 조문 단위로 잘라 토막남을 방지. 기본 40000자.
  */
-export async function getLawText(mst: string, maxChars = 30000): Promise<LawTextResult> {
+export async function getLawText(mst: string, maxChars = 40000): Promise<LawTextResult> {
   const oc = getOC();
   const params = new URLSearchParams({
     OC: oc,
@@ -227,12 +227,23 @@ function parseLawTextResponse(data: unknown, maxChars: number): LawTextResult {
     parts.push(lines.join('\n').trim());
   }
 
-  let fullText = parts.join('\n\n').trim();
-  if (fullText.length > maxChars) {
-    fullText =
-      fullText.slice(0, maxChars) +
-      '\n\n⚠️ [경고: 법령 본문이 너무 길어 이 지점 이후가 생략되었습니다. ' +
-      '생략된 뒷부분 조항은 이 응답으로 확인할 수 없으므로, 해당 조항을 인용해야 한다면 검증되지 않은 것으로 취급하십시오.]';
+  // 조문 단위로 누적하다 한도를 넘으면 멈춘다.
+  // (글자 단위로 자르면 조문이 토막나 AI가 어느 조문인지 헷갈려 환각이 발생함)
+  let fullText = '';
+  let truncated = false;
+  for (const part of parts) {
+    // 다음 조문을 더하면 한도를 넘는 경우 → 여기서 중단 (조문 경계 유지)
+    if (fullText.length + part.length + 2 > maxChars) {
+      truncated = true;
+      break;
+    }
+    fullText += (fullText ? '\n\n' : '') + part;
+  }
+  fullText = fullText.trim();
+  if (truncated) {
+    fullText +=
+      '\n\n⚠️ [경고: 법령 본문이 너무 길어 일부 뒷부분 조문이 생략되었습니다. ' +
+      '생략된 조항을 인용해야 한다면 검증되지 않은 것으로 취급하십시오.]';
   }
 
   return { name, fullText };
