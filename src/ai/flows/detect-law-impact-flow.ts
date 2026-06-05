@@ -11,6 +11,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import {lawTools} from '@/ai/tools/law-tools';
 import {runPromptWithRetry} from '@/ai/flows/_run-with-retry';
+import {verifyCitation} from '@/lib/verify-citation';
 
 // 입력 스키마: 규정 정보
 const RegulationInfoSchema = z.object({
@@ -216,6 +217,23 @@ const detectLawImpactFlow = ai.defineFlow(
   async (input) => {
     // maxTurns: 도구로 여러 법령을 검증할 수 있도록 상향.
     // runPromptWithRetry: 모델이 빈 응답(null)을 줄 경우 자동 재시도.
-    return await runPromptWithRetry(prompt, input, {maxTurns: 20});
+    const output = await runPromptWithRetry(prompt, input, {maxTurns: 20});
+
+    // 검증 레이어: AI가 인용한 조문을 실제 법령 본문과 대조해,
+    // 본문에 없는 수치를 인용했으면 sourceArticle 에 경고를 덧붙인다.
+    await Promise.all(
+      output.impactedRegulations.map(async (reg) => {
+        try {
+          const v = await verifyCitation(reg.sourceArticle);
+          if (v.checked && !v.consistent && v.note) {
+            reg.sourceArticle = `${reg.sourceArticle}\n⚠️ [자동검증] ${v.note}`;
+          }
+        } catch {
+          // 검증 실패는 결과에 영향 주지 않음 (무시)
+        }
+      })
+    );
+
+    return output;
   }
 );
