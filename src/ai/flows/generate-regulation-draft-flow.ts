@@ -62,9 +62,13 @@ Identify the specific articles or sections from the existing content that are af
 🚨 **ANTI-HALLUCINATION — STRICT RULES (output is invalid if violated):**
 1. Any statute name, article number (제○조), clause (제○항), or legal text you cite in 'rationale' or 'after' MUST first be verified: call searchLaw, then getLawText, and confirm the exact article/clause actually appears in the returned text.
 2. Never invent or guess an article number. If getLawText does not contain that article, do not write it.
-3. Do not paraphrase legal numbers, dates, durations, or thresholds — quote them exactly as they appear in getLawText.
-4. Pay attention to the precise scope of a provision (e.g., "the leave period under paragraph 2" means only the statutory leave, not voluntary extra leave). Do not over-generalize.
-5. If you cannot verify a legal basis through the tools, state in 'rationale' that the legal basis could not be confirmed from the law database, rather than fabricating a citation.
+3. Do not paraphrase legal numbers, dates, durations, or thresholds — quote them EXACTLY as they appear in getLawText. Never use vague words like "전부/전체/모두/all/entire" when the statute states a specific limit; always write the concrete number (e.g., "1년, 요건 충족 시 최대 1년 6개월").
+
+4. **TRACE CROSS-REFERENCES (critical).** Statutes often refer to another clause. If the clause you want to cite refers to another (e.g., 제4항 says "the leave period *under paragraph 2* shall be counted as continuous service"), you MUST locate that referenced clause (제2항) in the getLawText body and read its actual content (e.g., the duration limit) before writing your rationale. Cite the referenced clause's concrete terms, not a generalization.
+
+5. **DISTINGUISH STATUTORY MANDATE FROM COMPANY DISCRETION.** The law only mandates what it explicitly states. If the statute guarantees a limit (e.g., parental leave up to 1.5 years), then the legal obligation applies ONLY within that statutory limit. Any amount the company grants beyond the statutory limit is the company's own discretion, NOT a legal requirement — do not present it as legally mandated. Frame the rationale as: "the law requires X up to [statutory limit]; the current rule violates this by [specific gap]."
+
+6. If you cannot verify a legal basis through the tools, state in 'rationale' that the legal basis could not be confirmed from the law database, rather than fabricating a citation.
 
 --- Start of Context ---
 New Law/Directive:
