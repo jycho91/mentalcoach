@@ -26,6 +26,7 @@ import { generateRegulationDraft, type GenerateRegulationDraftOutput } from "@/a
 import { useFirestore, useCollection, useUser, useMemoFirebase, addDocument } from "@/firebase"
 import { collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
+import { AiDisclaimerDialog } from "@/components/ai-disclaimer-dialog"
 import { generateRevisionDocx, getRevisionDocxFilename } from "@/lib/revision-docx"
 
 // 디텍팅에서 전달받는 요청 데이터 타입
@@ -70,6 +71,7 @@ export function RevisionDrafter({ initialRequest, onComplete }: RevisionDrafterP
   const [upgradeInput, setUpgradeInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GenerateRegulationDraftOutput | null>(null);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [selectedRegId, setSelectedRegId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("new");
 
@@ -232,6 +234,7 @@ ${initialRequest.diff}`;
         existingRegulationContent: contextContent
       });
       setResult(output);
+      setShowDisclaimer(true);
 
       // 저장
       await saveDraft(output, false);
@@ -294,6 +297,7 @@ ${initialRequest.diff}`;
         upgradeRequest: upgradeInput,
       });
       setResult(output);
+      setShowDisclaimer(true);
 
       // 저장
       await saveDraft(output, true);
@@ -433,6 +437,13 @@ ${initialRequest.diff}`;
 
   return (
     <div className="max-w-7xl mx-auto flex flex-col h-full gap-6">
+      {/* AI 결과 면책 안내 팝업 */}
+      <AiDisclaimerDialog
+        open={showDisclaimer}
+        onClose={() => setShowDisclaimer(false)}
+        context="draft"
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">

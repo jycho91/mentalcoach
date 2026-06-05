@@ -14,6 +14,7 @@ import { useFirestore, useCollection, useUser, useMemoFirebase, addDocument } fr
 import { collection, doc, deleteDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { buildScanData, type LawImpactScan } from "@/lib/scan-data"
+import { AiDisclaimerDialog } from "@/components/ai-disclaimer-dialog"
 
 // 개정안 추천 요청 데이터 타입
 interface RevisionRequest {
@@ -40,6 +41,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
   const [result, setResult] = useState<DetectLawImpactOutput | null>(null);
   const [activeTab, setActiveTab] = useState<string>("scan");
   const [selectedScan, setSelectedScan] = useState<(LawImpactScan & { id: string }) | null>(null);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   // regulations 컬렉션 구독
   const regulationsRef = useMemoFirebase(() => {
@@ -113,6 +115,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
         }))
       });
       setResult(output);
+      setShowDisclaimer(true);
 
       // 결과 저장
       await saveScanResult(output, targetText, targetLawName);
@@ -176,6 +179,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
       };
 
       setResult(formattedResult);
+      setShowDisclaimer(true);
 
       // 결과 저장
       await saveScanResult(formattedResult, "AI 자동 법령 스캔", "AI 자동 법령 스캔");
@@ -299,6 +303,13 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
 
   return (
     <div className="max-w-7xl mx-auto flex flex-col h-full gap-6">
+      {/* AI 결과 면책 안내 팝업 */}
+      <AiDisclaimerDialog
+        open={showDisclaimer}
+        onClose={() => setShowDisclaimer(false)}
+        context="scan"
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
