@@ -32,7 +32,7 @@ function getOC(): string {
  * @param url 호출할 URL
  * @param retries 추가 재시도 횟수 (기본 2회 → 최대 3번 시도)
  */
-async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+async function fetchWithRetry(url: string, retries = 4): Promise<Response> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -43,11 +43,15 @@ async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
       }
       lastError = new Error(`HTTP ${res.status}`);
     } catch (e) {
+      // ECONNRESET 등 네트워크 오류 → law.go.kr 일시 불안정. 재시도로 흡수.
       lastError = e;
+      console.log(
+        `[fetchWithRetry] 시도 ${attempt + 1}/${retries + 1} 실패, 재시도 예정`
+      );
     }
-    // 마지막 시도가 아니면 잠깐 대기 후 재시도 (0.5s, 1s ...)
+    // 마지막 시도가 아니면 점점 더 길게 대기 (0.8s, 1.6s, 2.4s, 3.2s)
     if (attempt < retries) {
-      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
     }
   }
   throw lastError instanceof Error ? lastError : new Error(String(lastError));

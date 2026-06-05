@@ -71,6 +71,8 @@ Identify the specific articles or sections from the existing content that are af
 
 6. If you cannot verify a legal basis through the tools, state in 'rationale' that the legal basis could not be confirmed from the law database, rather than fabricating a citation.
 
+7. **CHECK EVERY CLAUSE OF THE ARTICLE — very important.** When an article (e.g., 제18조의2) is relevant, examine ALL of its clauses (①②③④...) one by one against the company regulation. If a single article has multiple changes, include EVERY one in the comparisonTable — do not stop after finding the first. (e.g., if 배우자 출산휴가 changed both "제1항: 20일" AND "제4항: 분할 3회", reflect BOTH changes.) Any clause whose number (days, count, period, amount) differs from the current rule must be included. Missing one undermines this approval document. Read the article top to bottom completely.
+
 --- Start of Context ---
 New Law/Directive:
 {{{newLawDirective}}}
