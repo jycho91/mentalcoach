@@ -18,8 +18,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
+import { POLICY_COMMITMENTS } from "@/ai/flows/policy-commitments-data"
 import {
-  POLICY_COMMITMENTS,
   alignPolicyCommitment,
   type RegulationAlignmentResult,
 } from "@/ai/flows/align-policy-commitment-flow"

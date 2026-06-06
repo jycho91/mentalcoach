@@ -8,6 +8,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {withAiRetry} from '@/lib/ai-retry';
 
 // 입력 스키마: 규정 정보
 const RegulationInfoSchema = z.object({
@@ -45,20 +46,8 @@ export type AutoComplianceScanOutput = z.infer<typeof AutoComplianceScanOutputSc
  * 사내 규정들을 검토하여 현행 법령에 어긋나는 부분을 찾아냅니다.
  */
 export async function autoComplianceScan(input: AutoComplianceScanInput): Promise<AutoComplianceScanOutput> {
-  try {
-    const result = await autoComplianceScanFlow(input);
-    return {
-      ...result,
-      scanTimestamp: new Date().toISOString(),
-    };
-  } catch (e: unknown) {
-    console.error('autoComplianceScan Flow Error:', e);
-    const message = e instanceof Error ? e.message : String(e);
-    if (message.includes('429') || message.includes('QUOTA')) {
-      throw new Error('AI 서비스 사용량이 일시적으로 초과되었습니다. 약 1분 후 다시 시도해 주세요.');
-    }
-    throw e;
-  }
+  const result = await withAiRetry(() => autoComplianceScanFlow(input));
+  return { ...result, scanTimestamp: new Date().toISOString() };
 }
 
 const prompt = ai.definePrompt({

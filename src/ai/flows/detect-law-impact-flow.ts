@@ -9,6 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {withAiRetry} from '@/lib/ai-retry';
 
 // 입력 스키마: 규정 정보
 const RegulationInfoSchema = z.object({
@@ -47,20 +48,8 @@ export type DetectLawImpactOutput = z.infer<typeof DetectLawImpactOutputSchema>;
  * 법령 텍스트와 사내 규정들을 분석하여 영향받는 규정을 찾아냅니다.
  */
 export async function detectLawImpact(input: DetectLawImpactInput): Promise<DetectLawImpactOutput> {
-  try {
-    const result = await detectLawImpactFlow(input);
-    return {
-      ...result,
-      scanTimestamp: new Date().toISOString(),
-    };
-  } catch (e: unknown) {
-    console.error('detectLawImpact Flow Error:', e);
-    const message = e instanceof Error ? e.message : String(e);
-    if (message.includes('429') || message.includes('QUOTA')) {
-      throw new Error('AI 서비스 사용량이 일시적으로 초과되었습니다. 약 1분 후 다시 시도해 주세요.');
-    }
-    throw e;
-  }
+  const result = await withAiRetry(() => detectLawImpactFlow(input));
+  return { ...result, scanTimestamp: new Date().toISOString() };
 }
 
 const prompt = ai.definePrompt({

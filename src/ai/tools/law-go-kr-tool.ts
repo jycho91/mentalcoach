@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview law.go.kr 판례 검색 Genkit Tool
  *
