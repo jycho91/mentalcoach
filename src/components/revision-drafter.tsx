@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Wand2, ArrowRight, CheckCircle2, BookOpen, FileDiff, Info, Loader2, Scale, History, Clock, ChevronRight, RefreshCw, Trash2, Download } from "lucide-react"
+import { Wand2, ArrowRight, CheckCircle2, BookOpen, FileDiff, Info, Loader2, Scale, History, Clock, ChevronRight, RefreshCw, Trash2, Download, AlertTriangle, Gavel } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,7 +23,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { generateRegulationDraft, type GenerateRegulationDraftOutput } from "@/ai/flows/generate-regulation-draft-flow"
-import { useSession, type SessionDraft, type DraftIteration } from "@/contexts/session-context"
+import { verifyWithPrecedentsFlow } from "@/ai/flows/verify-with-precedents-flow"
+import { useSession, type SessionDraft, type DraftIteration, type PrecedentReport } from "@/contexts/session-context"
 import { useToast } from "@/hooks/use-toast"
 
 interface RevisionRequest {
@@ -40,7 +41,7 @@ interface RevisionDrafterProps {
 }
 
 export function RevisionDrafter({ initialRequest, onComplete }: RevisionDrafterProps) {
-  const { regulations, drafts: draftHistory, addDraft, updateDraft, deleteDraft } = useSession();
+  const { regulations, drafts: draftHistory, addDraft, updateDraft, deleteDraft, precedentReports, setPrecedentReport } = useSession();
   const { toast } = useToast();
 
   const [directive, setDirective] = useState("고용노동부 지침: 2026년 4월 1일부터 모든 상시근로자 50인 이상 사업장은 월 1회 의무적으로 '직장 내 괴롭힘 예방 및 대처 심화 교육'을 2시간 이상 실시해야 하며, 이를 취업규칙에 명시해야 한다.");
@@ -53,6 +54,7 @@ export function RevisionDrafter({ initialRequest, onComplete }: RevisionDrafterP
   const [currentIterations, setCurrentIterations] = useState<DraftIteration[]>([]);
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [displayVersion, setDisplayVersion] = useState<number>(1);
+  const [precedentLoading, setPrecedentLoading] = useState(false);
 
   const [selectedDraft, setSelectedDraft] = useState<(SessionDraft) | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
@@ -200,9 +202,41 @@ ${initialRequest.diff}`;
     }
   };
 
+  // ─── 판례 교차검증 ────────────────────────────────────────────────────────
+
+  const handleVerifyPrecedents = async () => {
+    if (!result || !currentDraftId) return;
+    const reg = regulations.find(r => r.id === selectedRegId);
+    const draftContent = result.comparisonTable
+      .map(item => `${item.section}\n${item.after}`)
+      .join("\n\n");
+
+    setPrecedentLoading(true);
+    try {
+      const report = await verifyWithPrecedentsFlow({
+        draftContent,
+        relatedLawArticles: result.summaryOfChanges,
+        regulationName: reg?.fileName || "알 수 없음",
+      });
+      setPrecedentReport(currentDraftId, report);
+      toast({ title: "판례 교차검증 완료", description: "지지 및 충돌 판례 분석이 완료되었습니다." });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "판례 교차검증 중 오류가 발생했습니다.";
+      toast({ variant: "destructive", title: "검증 실패", description: msg });
+    } finally {
+      setPrecedentLoading(false);
+    }
+  };
+
   // ─── 개정안 다운로드 (.txt) ───────────────────────────────────────────────
 
-  const handleDownload = (draftResult: GenerateRegulationDraftOutput, version: number, regName?: string) => {
+  const handleDownload = (draftResult: GenerateRegulationDraftOutput, version: number, regName?: string, draftId?: string) => {
+    const report = draftId
+      ? precedentReports[draftId]
+      : currentDraftId
+        ? precedentReports[currentDraftId]
+        : undefined;
+
     const lines: string[] = [
       "========================================",
       "       RegulMate 개정안 추천 보고서",
@@ -231,6 +265,32 @@ ${initialRequest.diff}`;
     lines.push("");
     lines.push("=== 개정 근거 (Rationale) ===");
     lines.push(draftResult.rationale);
+
+    if (report) {
+      lines.push("");
+      lines.push("========================================");
+      lines.push("=== 판례 교차검증 결과 ===");
+      lines.push(`법적 리스크 평가: ${report.legalRiskAssessment}`);
+      lines.push("");
+      lines.push("--- 지지 판례 ---");
+      report.supportingPrecedents.forEach((p, i) => {
+        lines.push(`${i + 1}. [${p.caseNumber}] ${p.caseName} (${p.court}, ${p.date})`);
+        lines.push(`   판시: ${p.summary}`);
+        lines.push(`   관련성: ${p.relevance}`);
+      });
+      if (report.supportingPrecedents.length === 0) lines.push("해당 없음");
+      lines.push("");
+      lines.push("--- 충돌 가능 판례 ---");
+      report.conflictingPrecedents.forEach((p, i) => {
+        lines.push(`${i + 1}. [${p.caseNumber}] ${p.caseName} (${p.court}, ${p.date})`);
+        lines.push(`   판시: ${p.summary}`);
+        lines.push(`   관련성: ${p.relevance}`);
+      });
+      if (report.conflictingPrecedents.length === 0) lines.push("해당 없음");
+      lines.push("");
+      lines.push(`[주의] ${report.disclaimer}`);
+    }
+
     lines.push("");
     lines.push("========================================");
     lines.push("본 문서는 RegulMate AI가 생성한 초안입니다.");
@@ -299,6 +359,7 @@ ${initialRequest.diff}`;
     : null;
 
   const currentVersion = currentIterations.length || 0;
+  const activePrecedentReport = currentDraftId ? precedentReports[currentDraftId] : undefined;
 
   return (
     <div className="max-w-7xl mx-auto flex flex-col h-full gap-6">
@@ -527,6 +588,94 @@ ${initialRequest.diff}`;
                   </CardContent>
                 </Card>
               )}
+
+              {/* 판례 교차검증 */}
+              <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="pb-3 border-b bg-slate-50/50">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                      <Gavel className="w-4 h-4" />
+                      판례 교차검증
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleVerifyPrecedents}
+                      disabled={precedentLoading || !currentDraftId}
+                    >
+                      {precedentLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                      ) : (
+                        <Gavel className="w-4 h-4 mr-1.5" />
+                      )}
+                      {precedentLoading ? "검증 중..." : "판례 교차검증 실행"}
+                    </Button>
+                  </div>
+                </CardHeader>
+                {activePrecedentReport && (
+                  <CardContent className="pt-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500">법적 리스크:</span>
+                      <Badge
+                        variant={
+                          activePrecedentReport.legalRiskAssessment === 'LOW'
+                            ? 'secondary'
+                            : activePrecedentReport.legalRiskAssessment === 'HIGH'
+                            ? 'destructive'
+                            : 'outline'
+                        }
+                      >
+                        {activePrecedentReport.legalRiskAssessment === 'LOW'
+                          ? '낮음'
+                          : activePrecedentReport.legalRiskAssessment === 'MEDIUM'
+                          ? '보통'
+                          : '높음'}
+                      </Badge>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-700 mb-2">지지 판례</h4>
+                      {activePrecedentReport.supportingPrecedents.length === 0 ? (
+                        <p className="text-xs text-slate-400">해당 없음</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {activePrecedentReport.supportingPrecedents.map((p, i) => (
+                            <li key={i} className="p-3 bg-emerald-50 rounded-lg text-xs space-y-1">
+                              <div className="font-bold text-emerald-800">[{p.caseNumber}] {p.caseName}</div>
+                              <div className="text-slate-500">{p.court} | {p.date}</div>
+                              <div className="text-slate-700">{p.summary}</div>
+                              <div className="text-emerald-700 italic">관련성: {p.relevance}</div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-bold text-rose-700 mb-2">충돌 가능 판례</h4>
+                      {activePrecedentReport.conflictingPrecedents.length === 0 ? (
+                        <p className="text-xs text-slate-400">해당 없음</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {activePrecedentReport.conflictingPrecedents.map((p, i) => (
+                            <li key={i} className="p-3 bg-rose-50 rounded-lg text-xs space-y-1">
+                              <div className="font-bold text-rose-800">[{p.caseNumber}] {p.caseName}</div>
+                              <div className="text-slate-500">{p.court} | {p.date}</div>
+                              <div className="text-slate-700">{p.summary}</div>
+                              <div className="text-rose-700 italic">관련성: {p.relevance}</div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                      <p className="text-xs text-amber-800">{activePrecedentReport.disclaimer}</p>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
             </div>
           )}
 

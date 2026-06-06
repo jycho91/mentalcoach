@@ -1,0 +1,14 @@
+# Ralph Progress Log — ReguMate
+
+## Session Start: 2026-06-06
+
+### 초기 상태
+- ralplan 승인 완료 (.omc/plans/regulmate-plan.md)
+- 스펙 파일 완료 (docs/spec-regulmate.md)
+- 기존 구현: detect-law-impact-flow.ts, generate-regulation-draft-flow.ts, answer-compliance-question.ts, compliance-chatbot.tsx, revision-drafter.tsx
+- 핵심 이슈: 기존 flow에 "제외" 지시 있어 P1 위반 (Phase 1.5에서 수정 예정)
+
+### 패턴 발견
+- Genkit flow는 'use server' + genkit.ts의 ai 인스턴스 사용
+- SessionContext는 useState 기반, 브라우저 메모리 전용
+- UI는 Radix UI + Tailwind, 기존 impactLevel 배지 패턴 참조

@@ -35,11 +35,12 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 // ─── 영향도 배지 색상 ─────────────────────────────────────────────────────────
-function impactBadgeClass(level: "HIGH" | "MEDIUM" | "LOW") {
+function impactBadgeClass(level: "HIGH" | "MEDIUM" | "LOW" | "NONE") {
   return {
     HIGH: "bg-rose-100 text-rose-700 border-rose-200",
     MEDIUM: "bg-amber-100 text-amber-700 border-amber-200",
     LOW: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    NONE: "bg-slate-100 text-slate-400 border-slate-200",
   }[level]
 }
 
@@ -122,7 +123,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       s.impacts.map((i) => ({ ...i, lawName: s.lawName ?? "알 수 없는 법령" }))
     )
     const sorted = all.sort((a, b) => {
-      const rank = { HIGH: 0, MEDIUM: 1, LOW: 2 }
+      const rank = { HIGH: 0, MEDIUM: 1, LOW: 2, NONE: 3 }
       return rank[a.impactLevel] - rank[b.impactLevel]
     })
     // deduplicate by regulationId — keep highest severity

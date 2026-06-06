@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import {
   Book, PenTool, FileSearch, MessageSquare, Shield,
   User, ChevronDown, Sliders, Settings, Loader2,
-  RefreshCw, AlertTriangle, LogOut, Scale, Lock, X, LayoutDashboard
+  RefreshCw, AlertTriangle, LogOut, Scale, Lock, X, LayoutDashboard, Compass, Swords
 } from "lucide-react"
 import { Dashboard } from "@/components/dashboard"
 import { KnowledgeBase } from "@/components/knowledge-base"
@@ -12,6 +12,8 @@ import { RevisionDrafter } from "@/components/revision-drafter"
 import { JustificationExtractor } from "@/components/justification-extractor"
 import { ComplianceChatbot } from "@/components/compliance-chatbot"
 import { LawImpactDetector } from "@/components/law-impact-detector"
+import { PolicyAlignment } from "@/components/policy-alignment"
+import { ConflictDetector } from "@/components/conflict-detector"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -26,7 +28,7 @@ import { cn } from "@/lib/utils"
 import { useAuth, useUser, initiateAnonymousSignIn, initiateSignOut } from "@/firebase"
 import { useSession } from "@/contexts/session-context"
 
-type View = 'dashboard' | 'knowledge-base' | 'law-impact' | 'revision-drafter' | 'justification' | 'chatbot';
+type View = 'dashboard' | 'knowledge-base' | 'law-impact' | 'revision-drafter' | 'justification' | 'chatbot' | 'policy-alignment' | 'conflict-detector';
 
 interface RevisionRequest {
   regulationId: string;
@@ -134,7 +136,9 @@ export default function RegulMateApp() {
     'law-impact': '법령 영향 스캔',
     'revision-drafter': '개정안 추천 서비스',
     'justification': '개정 근거 추출',
-    'chatbot': '컴플라이언스 챗봇'
+    'chatbot': '컴플라이언스 챗봇',
+    'policy-alignment': '경영 방향성 규정 정렬',
+    'conflict-detector': '규정 충돌 탐지',
   };
 
   return (
@@ -175,6 +179,47 @@ export default function RegulMateApp() {
                   {currentView === item.id && <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />}
                 </button>
               ))}
+            </div>
+
+            <Separator className="bg-slate-800" />
+
+            {/* 경영 전략 모듈 */}
+            <div className="space-y-2">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 px-2">경영 전략 모듈</div>
+              <button
+                onClick={() => setCurrentView('policy-alignment')}
+                className={cn(
+                  "w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-300 group",
+                  currentView === 'policy-alignment'
+                    ? "bg-primary text-white shadow-xl shadow-primary/20 scale-[1.02]"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                )}
+              >
+                <div className="flex items-center space-x-3">
+                  <span className={cn("transition-colors duration-300", currentView === 'policy-alignment' ? "text-white" : "group-hover:text-primary")}>
+                    <Compass className="w-5 h-5" />
+                  </span>
+                  <span className="font-semibold text-sm tracking-tight">경영 방향성 정렬</span>
+                </div>
+                {currentView === 'policy-alignment' && <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />}
+              </button>
+              <button
+                onClick={() => setCurrentView('conflict-detector')}
+                className={cn(
+                  "w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-300 group",
+                  currentView === 'conflict-detector'
+                    ? "bg-primary text-white shadow-xl shadow-primary/20 scale-[1.02]"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                )}
+              >
+                <div className="flex items-center space-x-3">
+                  <span className={cn("transition-colors duration-300", currentView === 'conflict-detector' ? "text-white" : "group-hover:text-primary")}>
+                    <Swords className="w-5 h-5" />
+                  </span>
+                  <span className="font-semibold text-sm tracking-tight">규정 충돌 탐지</span>
+                </div>
+                {currentView === 'conflict-detector' && <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />}
+              </button>
             </div>
 
             <Separator className="bg-slate-800" />
@@ -333,6 +378,8 @@ export default function RegulMateApp() {
             )}
             {currentView === 'justification' && <JustificationExtractor />}
             {currentView === 'chatbot' && <ComplianceChatbot strictness={strictness} />}
+            {currentView === 'policy-alignment' && <PolicyAlignment />}
+            {currentView === 'conflict-detector' && <ConflictDetector />}
           </div>
         </div>
       </main>

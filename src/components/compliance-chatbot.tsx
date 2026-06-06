@@ -1,20 +1,29 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { MessageSquare, Send, Bot, User, Loader2, Info, ShieldCheck, Zap } from "lucide-react"
+import { Send, User, Info, ShieldCheck, Zap, ChevronDown, Scale } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import { answerComplianceQuestion } from "@/ai/flows/answer-compliance-question"
 import { cn } from "@/lib/utils"
 import { useSession } from "@/contexts/session-context"
 import { useToast } from "@/hooks/use-toast"
+
+interface PrecedentCitation {
+  caseNumber: string;
+  caseName: string;
+  summary: string;
+  relevance: string;
+}
 
 interface Message {
   role: 'user' | 'ai';
   text: string;
   reference?: string;
   crossImpact?: string;
+  precedentCitations?: PrecedentCitation[];
 }
 
 export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) {
@@ -132,7 +141,8 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
         role: 'ai',
         text: response.answer,
         reference: response.documentReference,
-        crossImpact: response.crossImpactAnalysis
+        crossImpact: response.crossImpactAnalysis,
+        precedentCitations: response.precedentCitations,
       };
       setMessages(prev => [...prev, aiMessage]);
     } catch (error: any) {
@@ -214,6 +224,37 @@ export function ComplianceChatbot({ strictness = 75 }: { strictness?: number }) 
                       </div>
                       <p className="text-xs text-amber-800 leading-relaxed font-medium">{msg.crossImpact}</p>
                     </div>
+                  )}
+
+                  {msg.precedentCitations && msg.precedentCitations.length > 0 && (
+                    <Collapsible className="animate-in zoom-in-95 duration-500">
+                      <CollapsibleTrigger className="w-full">
+                        <div className="bg-blue-50 border border-blue-100 px-4 py-3 rounded-xl flex items-center justify-between hover:bg-blue-100 transition-colors">
+                          <div className="flex items-center space-x-2 text-blue-700">
+                            <Scale className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold uppercase tracking-wider">관련 판례 {msg.precedentCitations.length}건</span>
+                          </div>
+                          <ChevronDown className="w-4 h-4 text-blue-500 transition-transform [[data-state=open]_&]:rotate-180" />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-1 space-y-2">
+                          {msg.precedentCitations.map((p, i) => (
+                            <div key={i} className="bg-blue-50 border border-blue-100 p-4 rounded-xl space-y-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider bg-blue-100 px-2 py-0.5 rounded-full">{p.caseNumber}</span>
+                              </div>
+                              <p className="text-xs font-semibold text-blue-900">{p.caseName}</p>
+                              <p className="text-xs text-blue-800 leading-relaxed">{p.summary}</p>
+                              <div className="flex items-start space-x-1.5 pt-1">
+                                <Info className="w-3 h-3 text-blue-400 mt-0.5 shrink-0" />
+                                <p className="text-[11px] text-blue-600 italic">{p.relevance}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
 
                   {msg.reference && (

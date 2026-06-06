@@ -26,7 +26,7 @@ export type AutoComplianceScanInput = z.infer<typeof AutoComplianceScanInputSche
 const ComplianceIssueSchema = z.object({
   regulationId: z.string().describe('문제가 발견된 사내 규정의 ID'),
   regulationName: z.string().describe('문제가 발견된 사내 규정의 명칭'),
-  impactLevel: z.enum(['HIGH', 'MEDIUM', 'LOW']).describe('심각도. HIGH: 법령 위반 가능성, MEDIUM: 개선 권고, LOW: 참고 수준'),
+  impactLevel: z.enum(['HIGH', 'MEDIUM', 'LOW', 'NONE']).describe('심각도. HIGH: 법령 위반 가능성, MEDIUM: 개선 권고, LOW: 참고 수준, NONE: 법령과 무관하여 문제 없음'),
   reason: z.string().describe('해당 규정에서 발견된 문제점과 개정 필요 사유'),
   sourceArticle: z.string().describe('관련 법령 조문 (가능한 정확히 인용)'),
   diff: z.string().describe('현행 규정 vs 법령 요구사항의 차이점'),
@@ -101,7 +101,7 @@ const prompt = ai.definePrompt({
 5. diff(차이점): 현행 규정과 법령 요구사항의 핵심 차이를 간략히 정리하십시오.
    예: "현행 규정: 주 52시간 / 법령 요구: 주 40시간 (연장근로 포함 52시간)"
 
-6. 문제가 없는 규정은 결과에서 제외하십시오.
+6. 모든 입력 규정에 대해 반드시 결과를 반환할 것. 법령과 무관하거나 문제가 없는 규정은 impactLevel을 'NONE'으로 설정하고, reason에 "현행 법령과의 충돌 없음"이라고 기재하여 포함할 것. 어떠한 규정도 결과에서 생략하지 말 것.
 
 7. summary: 전체 분석 결과를 2-3문장으로 요약하십시오.
 
@@ -136,6 +136,15 @@ const autoComplianceScanFlow = ai.defineFlow(
     if (!output) {
       throw new Error('AI가 컴플라이언스 스캔을 수행하지 못했습니다.');
     }
+
+    // 커버리지 불변식 단언: 모든 입력 규정이 결과에 포함되어야 한다
+    const inputIds = new Set(input.regulations.map(r => r.id));
+    const outputIds = new Set(output.impactedRegulations.map(r => r.regulationId));
+    const missing = [...inputIds].filter(id => !outputIds.has(id));
+    if (missing.length > 0) {
+      console.error('[ReguMate] 커버리지 불변식 위반: 누락된 규정 ID:', missing);
+    }
+
     return output;
   }
 );

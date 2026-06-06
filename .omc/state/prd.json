@@ -1,0 +1,102 @@
+{
+  "task": "ReguMate 구현 계획 실행 (ralplan 승인 완료)",
+  "planFile": ".omc/plans/regulmate-plan.md",
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Phase 0: 환경 준비 — .env.local 설정",
+      "passes": true,
+      "acceptanceCriteria": [
+        ".env.local 파일에 LAW_GO_KR_API_KEY='' 및 LAW_GO_KR_API_URL=https://www.law.go.kr/DRF/lawSearch.do 키가 존재한다 (값은 나중에 채움)",
+        "Next.js가 해당 환경변수를 인식한다 (빌드 오류 없음)"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Phase 1: law.go.kr REST 클라이언트 + Genkit Tool",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/lib/law-go-kr-client.ts 파일이 존재하며 searchPrecedents(keyword, lawName) 함수를 export한다",
+        "API key 미설정 시 mock 데이터를 반환하고 콘솔에 경고를 출력한다",
+        "src/ai/tools/law-go-kr-tool.ts 파일이 존재하며 ai.defineTool()로 래핑된 searchPrecedents tool을 export한다",
+        "npm run typecheck 통과"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Phase 1.5: 커버리지 불변식 — P1 핵심",
+      "passes": true,
+      "acceptanceCriteria": [
+        "auto-compliance-scan-flow.ts의 '문제가 없는 규정은 결과에서 제외하십시오' 지시가 제거되고 NONE 포함 방식으로 교체된다",
+        "detect-law-impact-flow.ts의 '영향받지 않는 규정은 결과에서 제외하십시오' 지시가 제거된다",
+        "두 flow의 출력 enum에 'NONE' 레벨이 추가된다",
+        "두 flow에서 입력 규정 ID가 출력에 모두 존재하는지 단언하고 누락 시 console.error를 호출한다",
+        "SessionScanImpact.impactLevel 타입에 'NONE'이 추가된다 (session-context.tsx)",
+        "law-impact-detector.tsx에서 impactedCount가 NONE 제외 수치로 계산된다",
+        "법령과 무관한 규정이 NONE으로 별도 섹션에 표시된다",
+        "npm run typecheck 통과"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Phase 2: 1-B 판례 교차검증 Flow",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/ai/flows/verify-with-precedents-flow.ts가 존재하며 PrecedentReport 타입을 export한다",
+        "verify-with-precedents-flow.ts의 출력에 supportingPrecedents, conflictingPrecedents, legalRiskAssessment, disclaimer가 포함된다",
+        "session-context.tsx에 precedentReports: Record<string, PrecedentReport> 상태와 setPrecedentReport 액션이 추가된다",
+        "generate-regulation-draft-flow.ts의 출력 스키마는 수정되지 않는다 (P3 준수)",
+        "revision-drafter.tsx에 '판례 교차검증' 버튼이 존재하며 클릭 시 flow를 호출한다",
+        "handleDownload가 precedentReports[draftId]를 조회하여 리포트 섹션을 포함한다",
+        "npm run typecheck 통과"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Phase 3: 챗봇 판례 연동",
+      "passes": true,
+      "acceptanceCriteria": [
+        "answer-compliance-question.ts에 searchPrecedents tool이 등록된다",
+        "답변 출력에 precedentCitations? 필드가 추가된다",
+        "compliance-chatbot.tsx에 판례 인용 접이식 섹션이 추가된다 (판례 없으면 미표시)",
+        "npm run typecheck 통과"
+      ]
+    },
+    {
+      "id": "US-006",
+      "title": "Phase 4: 경영 방향성 기반 전사 규정 일괄 정렬",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/ai/flows/align-policy-commitment-flow.ts가 존재하며 ESG/다양성·포용성/안전 우선/윤리경영/디지털 전환 커미트먼트를 지원한다",
+        "src/components/policy-alignment.tsx가 존재하며 커미트먼트 선택 UI, 생성 버튼, 규정별 진행 상태 UI를 포함한다",
+        "커미트먼트 미선택 시 생성 버튼이 비활성화된다",
+        "sessionStorage에 규정별 완료 상태가 저장된다",
+        "page.tsx의 View 타입에 'policy-alignment'가 추가되고 nav에 표시된다",
+        "npm run typecheck 통과"
+      ]
+    },
+    {
+      "id": "US-007",
+      "title": "Phase 5: 내부 규정 간 충돌 탐지",
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/ai/flows/detect-regulation-conflicts-flow.ts가 존재하며 LOGIC/NUMERIC/SEMANTIC 충돌 유형을 탐지한다",
+        "충돌 출력에 type, regulationAId, regulationBId, conflictingTexts, description, arbitration, severity가 포함된다",
+        "src/components/conflict-detector.tsx가 존재하며 유형별 필터 탭, 충돌 카드, 중재안을 표시한다",
+        "규정 1개 상태에서 '2개 이상 필요' 안내가 표시된다",
+        "session-context.tsx에 conflictScans 상태가 추가된다",
+        "page.tsx에 'conflict-detector' View와 nav item이 추가된다",
+        "npm run typecheck 통과"
+      ]
+    },
+    {
+      "id": "US-008",
+      "title": "최종 빌드 검증",
+      "passes": true,
+      "acceptanceCriteria": [
+        "npm run typecheck 통과 (신규 파일 0 errors — mentalcoach/ 및 calendar.tsx는 pre-existing)",
+        "npm run build 통과 (5/5 static pages)"
+      ]
+    }
+  ]
+}

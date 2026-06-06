@@ -2,6 +2,10 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode } from "react"
 import type { GenerateRegulationDraftOutput } from "@/ai/flows/generate-regulation-draft-flow"
+import type { PrecedentReport } from "@/ai/flows/verify-with-precedents-flow"
+export type { PrecedentReport } from "@/ai/flows/verify-with-precedents-flow"
+import type { ConflictScanResult } from "@/ai/flows/detect-regulation-conflicts-flow"
+export type { ConflictScanResult } from "@/ai/flows/detect-regulation-conflicts-flow"
 
 // ─── 타입 정의 ───────────────────────────────────────────────────────────────
 
@@ -34,7 +38,7 @@ export interface SessionDraft {
 export interface SessionScanImpact {
   regulationId: string;
   regulationName: string;
-  impactLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+  impactLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
   reason: string;
   sourceArticle: string;
   diff: string;
@@ -51,12 +55,17 @@ export interface SessionScan {
   summary: string;
 }
 
+/** 세션 내 충돌 스캔 결과 (id 포함) */
+export type SessionConflictScan = ConflictScanResult & { id: string };
+
 // ─── 컨텍스트 인터페이스 ──────────────────────────────────────────────────────
 
 interface SessionContextValue {
   regulations: SessionRegulation[];
   drafts: SessionDraft[];
   scans: SessionScan[];
+  /** 판례 교차검증 결과 (key: draftId) */
+  precedentReports: Record<string, PrecedentReport>;
   addRegulation: (reg: Omit<SessionRegulation, "id">) => string;
   deleteRegulations: (ids: string[]) => void;
   addDraft: (draft: Omit<SessionDraft, "id">) => string;
@@ -64,6 +73,14 @@ interface SessionContextValue {
   deleteDraft: (id: string) => void;
   addScan: (scan: Omit<SessionScan, "id">) => string;
   deleteScan: (id: string) => void;
+  /** 규정 간 충돌 스캔 결과 목록 */
+  conflictScans: SessionConflictScan[];
+  /** 충돌 스캔 결과를 추가하고 생성된 id를 반환합니다. */
+  addConflictScan: (scan: ConflictScanResult) => string;
+  /** 충돌 스캔 결과를 삭제합니다. */
+  deleteConflictScan: (id: string) => void;
+  /** 판례 교차검증 결과를 저장합니다. */
+  setPrecedentReport: (draftId: string, report: PrecedentReport) => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -79,6 +96,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [regulations, setRegulations] = useState<SessionRegulation[]>([]);
   const [drafts, setDrafts] = useState<SessionDraft[]>([]);
   const [scans, setScans] = useState<SessionScan[]>([]);
+  const [precedentReports, setPrecedentReportsState] = useState<Record<string, PrecedentReport>>({});
+  const [conflictScans, setConflictScans] = useState<SessionConflictScan[]>([]);
 
   const addRegulation = useCallback((reg: Omit<SessionRegulation, "id">) => {
     const id = generateId();
@@ -114,11 +133,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setScans(prev => prev.filter(s => s.id !== id));
   }, []);
 
+  const addConflictScan = useCallback((scan: ConflictScanResult) => {
+    const id = generateId();
+    setConflictScans(prev => [...prev, { ...scan, id }]);
+    return id;
+  }, []);
+
+  const deleteConflictScan = useCallback((id: string) => {
+    setConflictScans(prev => prev.filter(s => s.id !== id));
+  }, []);
+
+  const setPrecedentReport = useCallback((draftId: string, report: PrecedentReport) => {
+    setPrecedentReportsState(prev => ({ ...prev, [draftId]: report }));
+  }, []);
+
   return (
     <SessionContext.Provider value={{
       regulations,
       drafts,
       scans,
+      precedentReports,
       addRegulation,
       deleteRegulations,
       addDraft,
@@ -126,6 +160,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       deleteDraft,
       addScan,
       deleteScan,
+      conflictScans,
+      addConflictScan,
+      deleteConflictScan,
+      setPrecedentReport,
     }}>
       {children}
     </SessionContext.Provider>

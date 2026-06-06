@@ -28,7 +28,7 @@ export type DetectLawImpactInput = z.infer<typeof DetectLawImpactInputSchema>;
 const ImpactedRegulationSchema = z.object({
   regulationId: z.string().describe('영향받는 사내 규정의 ID'),
   regulationName: z.string().describe('영향받는 사내 규정의 명칭'),
-  impactLevel: z.enum(['HIGH', 'MEDIUM', 'LOW']).describe('영향도 수준. HIGH: 즉시 개정 필요, MEDIUM: 검토 필요, LOW: 참고 수준'),
+  impactLevel: z.enum(['HIGH', 'MEDIUM', 'LOW', 'NONE']).describe('영향도 수준. HIGH: 즉시 개정 필요, MEDIUM: 검토 필요, LOW: 참고 수준, NONE: 해당 법령의 영향 없음'),
   reason: z.string().describe('해당 규정이 영향받는 구체적인 사유'),
   sourceArticle: z.string().describe('개정 필요성의 법적 근거가 되는 조문 (정확히 인용)'),
   diff: z.string().describe('현행 규정 vs 개정 법령의 핵심 차이점'),
@@ -97,7 +97,7 @@ const prompt = ai.definePrompt({
 5. diff(차이점): 현행 규정과 개정 법령의 핵심 차이를 간략히 정리하십시오.
    예: "현행: 연 1회 교육 → 개정 법령: 월 1회 교육"
 
-6. 영향받지 않는 규정은 결과에서 제외하십시오.
+6. 모든 입력 규정에 대해 반드시 결과를 반환할 것. 해당 법령의 영향을 받지 않는 규정은 impactLevel을 'NONE'으로 설정하고, reason에 "해당 법령의 영향 없음"이라고 기재하여 포함할 것. 어떠한 규정도 결과에서 생략하지 말 것.
 
 7. summary: 전체 분석 결과를 2-3문장으로 요약하십시오.
 
@@ -132,6 +132,15 @@ const detectLawImpactFlow = ai.defineFlow(
     if (!output) {
       throw new Error('AI가 법령 영향 분석을 수행하지 못했습니다.');
     }
+
+    // 커버리지 불변식 단언: 모든 입력 규정이 결과에 포함되어야 한다
+    const inputIds = new Set(input.regulations.map(r => r.id));
+    const outputIds = new Set(output.impactedRegulations.map(r => r.regulationId));
+    const missing = [...inputIds].filter(id => !outputIds.has(id));
+    if (missing.length > 0) {
+      console.error('[ReguMate] 커버리지 불변식 위반: 누락된 규정 ID:', missing);
+    }
+
     return output;
   }
 );

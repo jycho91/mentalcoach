@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Scale, Scan, AlertTriangle, AlertCircle, Info, Loader2, FileText, Sparkles, History, Clock, ChevronRight, PenTool, Trash2, Bot } from "lucide-react"
+import { Scale, Scan, AlertTriangle, AlertCircle, Info, Loader2, FileText, Sparkles, History, Clock, ChevronRight, ChevronDown, PenTool, Trash2, Bot } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,6 +35,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
   const [result, setResult] = useState<DetectLawImpactOutput | null>(null);
   const [activeTab, setActiveTab] = useState<string>("scan");
   const [selectedScan, setSelectedScan] = useState<SessionScan | null>(null);
+  const [noneExpanded, setNoneExpanded] = useState(false);
 
   // ─── 세션 저장 ────────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
       lawText: scannedLawText,
       ...(scannedLawName ? { lawName: scannedLawName } : {}),
       regulationCount: regulations.length,
-      impactedCount: output.impactedRegulations.length,
+      impactedCount: output.impactedRegulations.filter(r => r.impactLevel !== 'NONE').length,
       impacts: output.impactedRegulations.map(r => ({
         regulationId: r.regulationId,
         regulationName: r.regulationName,
@@ -82,7 +83,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
       });
       setResult(output);
       saveScanResult(output, targetText, targetLawName);
-      toast({ title: "스캔 완료", description: `${output.impactedRegulations.length}개의 영향받는 규정이 발견되었습니다. 이력에 저장됨.` });
+      toast({ title: "스캔 완료", description: `${output.impactedRegulations.filter(r => r.impactLevel !== 'NONE').length}개의 영향받는 규정이 발견되었습니다. 이력에 저장됨.` });
     } catch (error: any) {
       console.error("Law Impact Detection Error:", error);
       setResult(null);
@@ -124,7 +125,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
 
       setResult(formattedResult);
       saveScanResult(formattedResult, "AI 자동 법령 스캔", "AI 자동 법령 스캔");
-      toast({ title: "AI 스캔 완료", description: `${output.impactedRegulations.length}개의 개정 필요 규정이 발견되었습니다.` });
+      toast({ title: "AI 스캔 완료", description: `${output.impactedRegulations.filter(r => r.impactLevel !== 'NONE').length}개의 개정 필요 규정이 발견되었습니다.` });
     } catch (error: any) {
       console.error("Auto Compliance Scan Error:", error);
       setResult(null);
@@ -155,6 +156,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
       case 'HIGH': return 'destructive';
       case 'MEDIUM': return 'default';
       case 'LOW': return 'secondary';
+      case 'NONE': return 'outline';
       default: return 'outline';
     }
   };
@@ -164,6 +166,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
       case 'HIGH': return <AlertTriangle className="w-4 h-4" />;
       case 'MEDIUM': return <AlertCircle className="w-4 h-4" />;
       case 'LOW': return <Info className="w-4 h-4" />;
+      case 'NONE': return <Info className="w-4 h-4 text-slate-400" />;
       default: return null;
     }
   };
@@ -173,6 +176,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
       case 'HIGH': return '즉시 개정 필요';
       case 'MEDIUM': return '검토 필요';
       case 'LOW': return '참고 수준';
+      case 'NONE': return '영향 없음';
       default: return level;
     }
   };
@@ -343,80 +347,116 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
               </div>
             )}
 
-            <Card className="border-primary/20 bg-primary/5 shadow-md">
-              <CardHeader className="pb-3 border-b border-primary/10">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-bold text-primary uppercase tracking-widest">스캔 결과 요약</CardTitle>
-                  <Badge variant="outline" className="text-primary border-primary/30">
-                    {displayResult.impactedRegulations.length}개 영향
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <p className="text-sm text-slate-700 leading-relaxed">{displayResult.summary}</p>
-              </CardContent>
-            </Card>
-
-            {displayResult.impactedRegulations.length > 0 ? (
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">영향받는 규정 목록</h3>
-                {displayResult.impactedRegulations.map((impact, idx) => (
-                  <Card key={idx} className="shadow-md border-slate-200 overflow-hidden">
-                    <CardHeader className="pb-3 bg-slate-50/80 border-b">
+            {(() => {
+              const impactedItems = displayResult.impactedRegulations.filter(r => r.impactLevel !== 'NONE');
+              const noneItems = displayResult.impactedRegulations.filter(r => r.impactLevel === 'NONE');
+              return (
+                <>
+                  <Card className="border-primary/20 bg-primary/5 shadow-md">
+                    <CardHeader className="pb-3 border-b border-primary/10">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <FileText className="w-5 h-5 text-slate-400" />
-                          <CardTitle className="text-base font-bold text-slate-800">{impact.regulationName}</CardTitle>
-                        </div>
-                        <Badge variant={getImpactBadgeVariant(impact.impactLevel)} className="flex items-center space-x-1">
-                          {getImpactIcon(impact.impactLevel)}
-                          <span>{getImpactLabel(impact.impactLevel)}</span>
+                        <CardTitle className="text-sm font-bold text-primary uppercase tracking-widest">스캔 결과 요약</CardTitle>
+                        <Badge variant="outline" className="text-primary border-primary/30">
+                          {impactedItems.length}개 영향
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-4 space-y-4">
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">개정 필요 사유</h4>
-                        <p className="text-sm text-slate-700 leading-relaxed">{impact.reason}</p>
-                      </div>
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">관련 법령 조문</h4>
-                        <p className="text-sm text-slate-700 leading-relaxed font-mono italic">&ldquo;{impact.sourceArticle}&rdquo;</p>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">현행 vs 개정 법령 차이점</h4>
-                        <p className="text-sm text-slate-700 leading-relaxed bg-amber-50 p-3 rounded-lg border border-amber-200">{impact.diff}</p>
-                      </div>
-                      <div className="pt-2">
-                        <Button
-                          variant="default"
-                          className="w-full"
-                          onClick={() => onRequestRevision?.({
-                            regulationId: impact.regulationId,
-                            regulationName: impact.regulationName,
-                            reason: impact.reason,
-                            sourceArticle: impact.sourceArticle,
-                            diff: impact.diff,
-                          })}
-                        >
-                          <PenTool className="w-4 h-4 mr-2" />
-                          개정안 추천
-                        </Button>
-                      </div>
+                    <CardContent className="pt-4">
+                      <p className="text-sm text-slate-700 leading-relaxed">{displayResult.summary}</p>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="border-emerald-200 bg-emerald-50">
-                <CardContent className="py-8 text-center">
-                  <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Info className="w-6 h-6 text-emerald-600" />
-                  </div>
-                  <p className="text-emerald-700 font-medium">이 법령으로 인해 영향받는 사내 규정이 없습니다.</p>
-                </CardContent>
-              </Card>
-            )}
+
+                  {impactedItems.length > 0 ? (
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">영향받는 규정 목록</h3>
+                      {impactedItems.map((impact, idx) => (
+                        <Card key={idx} className="shadow-md border-slate-200 overflow-hidden">
+                          <CardHeader className="pb-3 bg-slate-50/80 border-b">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <FileText className="w-5 h-5 text-slate-400" />
+                                <CardTitle className="text-base font-bold text-slate-800">{impact.regulationName}</CardTitle>
+                              </div>
+                              <Badge variant={getImpactBadgeVariant(impact.impactLevel)} className="flex items-center space-x-1">
+                                {getImpactIcon(impact.impactLevel)}
+                                <span>{getImpactLabel(impact.impactLevel)}</span>
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-4 space-y-4">
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">개정 필요 사유</h4>
+                              <p className="text-sm text-slate-700 leading-relaxed">{impact.reason}</p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">관련 법령 조문</h4>
+                              <p className="text-sm text-slate-700 leading-relaxed font-mono italic">&ldquo;{impact.sourceArticle}&rdquo;</p>
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">현행 vs 개정 법령 차이점</h4>
+                              <p className="text-sm text-slate-700 leading-relaxed bg-amber-50 p-3 rounded-lg border border-amber-200">{impact.diff}</p>
+                            </div>
+                            <div className="pt-2">
+                              <Button
+                                variant="default"
+                                className="w-full"
+                                onClick={() => onRequestRevision?.({
+                                  regulationId: impact.regulationId,
+                                  regulationName: impact.regulationName,
+                                  reason: impact.reason,
+                                  sourceArticle: impact.sourceArticle,
+                                  diff: impact.diff,
+                                })}
+                              >
+                                <PenTool className="w-4 h-4 mr-2" />
+                                개정안 추천
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="border-emerald-200 bg-emerald-50">
+                      <CardContent className="py-8 text-center">
+                        <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Info className="w-6 h-6 text-emerald-600" />
+                        </div>
+                        <p className="text-emerald-700 font-medium">이 법령으로 인해 영향받는 사내 규정이 없습니다.</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {noneItems.length > 0 && (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 uppercase tracking-widest hover:bg-slate-100 transition-colors"
+                        onClick={() => setNoneExpanded(prev => !prev)}
+                      >
+                        <span>법령 영향 없음 {noneItems.length}건</span>
+                        {noneExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </button>
+                      {noneExpanded && (
+                        <div className="space-y-2 pl-2">
+                          {noneItems.map((impact, idx) => (
+                            <Card key={idx} className="shadow-sm border-slate-100 bg-slate-50/50">
+                              <CardContent className="py-3 flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <FileText className="w-4 h-4 text-slate-300" />
+                                  <span className="text-sm text-slate-500">{impact.regulationName}</span>
+                                </div>
+                                <Badge variant="outline" className="text-slate-400 border-slate-200 text-xs">영향 없음</Badge>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 
