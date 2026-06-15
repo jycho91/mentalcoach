@@ -9,6 +9,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {lawTools} from '@/ai/tools/law-tools';
+import {runPromptWithRetry} from '@/ai/flows/_run-with-retry';
 
 const ComparisonItemSchema = z.object({
   section: z.string().describe('The section or article name/number (e.g., "제 12조 (비용 청구)")'),
@@ -48,10 +50,32 @@ const prompt = ai.definePrompt({
   name: 'generateRegulationDraftPrompt',
   input: {schema: GenerateRegulationDraftInputSchema},
   output: {schema: GenerateRegulationDraftOutputSchema},
+  tools: lawTools,
+  // temperature 0.3: 무작위성 낮춰 변경점 누락 줄이되 과도하게 경직되지 않게
+  config: {temperature: 0.3},
   prompt: `You are an expert compliance officer. Your task is to generate a 'Before vs. After' comparison for a regulation revision based on a new directive.
 
 Instead of the full text, focus ONLY on the sections that need to be changed or added.
 Identify the specific articles or sections from the existing content that are affected.
+
+🔍 **Available tools (use them — this output becomes an official approval document, so legal accuracy is critical):**
+- searchLaw(query): Search the Korea Law Information Center for a statute; confirms it exists and returns its mst.
+- getLawText(mst): Fetch the actual article text of a statute (use the mst from searchLaw).
+
+🚨 **ANTI-HALLUCINATION — STRICT RULES (output is invalid if violated):**
+1. Any statute name, article number (제○조), clause (제○항), or legal text you cite in 'rationale' or 'after' MUST first be verified: call searchLaw, then getLawText, and confirm the exact article/clause actually appears in the returned text.
+2. Never invent or guess an article number. If getLawText does not contain that article, do not write it.
+3. **COPY STATUTE TEXT VERBATIM — never restructure.** When citing a clause, copy it CHARACTER-FOR-CHARACTER from the getLawText body. Do not summarize or reword it. Keep the clause numbers (①②③④) exactly as in the source — never renumber (e.g., writing ④ when it is actually ②) or mix content from different clauses. If a clause has a proviso ("다만, ..."), include that proviso completely (e.g., "1년 이내로 한다. 다만, ...6개월 이내에서 추가로..." — never drop the "다만" part). Do not paraphrase numbers, dates, durations, or thresholds. Never use vague words like "전부/전체/all/entire" when the statute states a specific limit; write the concrete number.
+
+4. **TRACE CROSS-REFERENCES (critical).** Statutes often refer to another clause. If the clause you want to cite refers to another (e.g., 제4항 says "the leave period *under paragraph 2* shall be counted as continuous service"), you MUST locate that referenced clause (제2항) in the getLawText body and read its actual content (e.g., the duration limit) before writing your rationale. Cite the referenced clause's concrete terms, not a generalization.
+
+5. **DISTINGUISH STATUTORY MANDATE FROM COMPANY DISCRETION.** The law only mandates what it explicitly states. If the statute guarantees a limit (e.g., parental leave up to 1.5 years), then the legal obligation applies ONLY within that statutory limit. Any amount the company grants beyond the statutory limit is the company's own discretion, NOT a legal requirement — do not present it as legally mandated. Frame the rationale as: "the law requires X up to [statutory limit]; the current rule violates this by [specific gap]."
+
+6. If you cannot verify a legal basis through the tools, state in 'rationale' that the legal basis could not be confirmed from the law database, rather than fabricating a citation.
+
+7. **CHECK EVERY CLAUSE OF THE ARTICLE — very important.** When an article (e.g., 제18조의2) is relevant, examine ALL of its clauses (①②③④...) one by one against the company regulation. If a single article has multiple changes, include EVERY one in the comparisonTable — do not stop after finding the first. (e.g., if 배우자 출산휴가 changed both "제1항: 20일" AND "제4항: 분할 3회", reflect BOTH changes.) Any clause whose number (days, count, period, amount) differs from the current rule must be included. Missing one undermines this approval document. Read the article top to bottom completely.
+
+8. **VERIFY AGAINST THE LAW YOURSELF — do not blindly trust the directive text.** The "New Law/Directive" text you receive may be a summary from an earlier scan and may have MISSED some changes. Therefore, when the directive mentions a statute (e.g., 배우자 출산휴가 → 남녀고용평등법 제18조의2), independently call searchLaw + getLawText, read that article's full text, and cross-check EVERY clause against the company regulation yourself. If you find additional changes the directive did not mention (e.g., directive only said "분할 3회" but the law also changed "10일 → 20일"), you MUST include those too. The law text from getLawText is the source of truth, not the directive summary.
 
 --- Start of Context ---
 New Law/Directive:
@@ -94,7 +118,7 @@ Instructions for output:
 
 Ensure the output is in Korean.
 
-Example output structure:
+Example output structure (FORMAT ONLY — do NOT copy the article numbers or legal text below; cite only tool-verified text):
 {
   "comparisonTable": [
     {
@@ -116,10 +140,8 @@ const generateRegulationDraftFlow = ai.defineFlow(
     outputSchema: GenerateRegulationDraftOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
-    if (!output) {
-      throw new Error('AI가 개정안 비교표를 생성하지 못했습니다.');
-    }
-    return output!;
+    // maxTurns: 법령 검증 도구를 여러 번 호출할 수 있도록 한도 상향.
+    // runPromptWithRetry: 모델이 빈 응답(null)을 줄 경우 자동 재시도.
+    return await runPromptWithRetry(prompt, input, {maxTurns: 20});
   }
 );

@@ -163,33 +163,38 @@ export default function RegulMateApp() {
               ))}
             </div>
 
-            <Separator className="bg-slate-800" />
+            {/* 챗봇 정확도 설정 - 챗봇 탭에서만 표시 */}
+            {currentView === 'chatbot' && (
+              <>
+                <Separator className="bg-slate-800" />
 
-            {/* Vector DB Settings */}
-            <div className="space-y-4 px-2">
-              <div className="flex items-center space-x-2 mb-3">
-                <Sliders className="w-4 h-4 text-primary" />
-                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">챗봇 정확도 설정</h3>
-              </div>
-              <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 backdrop-blur-sm space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-400 font-medium">정확도</span>
-                  <Badge className="bg-primary/20 text-primary border-primary/20 font-code">{strictness}%</Badge>
+                {/* Vector DB Settings */}
+                <div className="space-y-4 px-2">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Sliders className="w-4 h-4 text-primary" />
+                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">챗봇 정확도 설정</h3>
+                  </div>
+                  <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50 backdrop-blur-sm space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-slate-400 font-medium">정확도</span>
+                      <Badge className="bg-primary/20 text-primary border-primary/20 font-code">{strictness}%</Badge>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={strictness}
+                      onChange={(e) => setStrictness(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <div className="flex justify-between text-[9px] text-slate-500 font-bold uppercase tracking-wider">
+                      <span>문맥 위주</span>
+                      <span>정확 일치</span>
+                    </div>
+                  </div>
                 </div>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  value={strictness}
-                  onChange={(e) => setStrictness(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary"
-                />
-                <div className="flex justify-between text-[9px] text-slate-500 font-bold uppercase tracking-wider">
-                  <span>문맥 위주</span>
-                  <span>정확 일치</span>
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </nav>
         </div>
 

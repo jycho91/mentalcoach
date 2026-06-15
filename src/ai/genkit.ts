@@ -23,5 +23,7 @@ if (!apiKey) {
 
 export const ai = genkit({
   plugins: [googleAI({ apiKey })],
-  model: 'googleai/gemini-2.5-flash',
+  // gemini-2.5-pro: 추론·정확도가 높아 도구(법령 검증) 결과를 더 충실히 따름 → 환각 감소.
+  // 트레이드오프: Flash보다 느리고 비쌈 (유료 티어/크레딧 기준 데모엔 충분).
+  model: 'googleai/gemini-2.5-pro',
 });

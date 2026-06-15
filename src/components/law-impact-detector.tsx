@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Scale, Scan, AlertTriangle, AlertCircle, Info, Loader2, FileText, Sparkles, History, Clock, ChevronRight, PenTool, Trash2, Bot } from "lucide-react"
+import { Scale, Scan, AlertTriangle, AlertCircle, Info, Loader2, FileText, History, Clock, ChevronRight, PenTool, Trash2, Bot } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,10 +9,11 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { detectLawImpact, type DetectLawImpactOutput } from "@/ai/flows/detect-law-impact-flow"
 import { autoComplianceScan } from "@/ai/flows/auto-compliance-scan-flow"
-import { SAMPLE_LAWS } from "@/lib/sample-law"
 import { useFirestore, useCollection, useUser, useMemoFirebase, addDocument } from "@/firebase"
 import { collection, doc, deleteDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
+import { buildScanData, type LawImpactScan } from "@/lib/scan-data"
+import { AiDisclaimerDialog } from "@/components/ai-disclaimer-dialog"
 
 // 개정안 추천 요청 데이터 타입
 interface RevisionRequest {
@@ -27,24 +28,7 @@ interface LawImpactDetectorProps {
   onRequestRevision?: (data: RevisionRequest) => void;
 }
 
-// Firestore 스캔 결과 타입
-interface LawImpactScan {
-  userId: string;
-  scannedAt: string;
-  lawText: string;
-  lawName?: string;
-  regulationCount: number;
-  impactedCount: number;
-  impacts: Array<{
-    regulationId: string;
-    regulationName: string;
-    impactLevel: 'HIGH' | 'MEDIUM' | 'LOW';
-    reason: string;
-    sourceArticle: string;
-    diff: string;
-  }>;
-  summary: string;
-}
+// Firestore 스캔 결과 타입은 @/lib/scan-data 에서 가져와 사용 (중복 정의 제거)
 
 export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps) {
   const db = useFirestore();
@@ -56,6 +40,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
   const [result, setResult] = useState<DetectLawImpactOutput | null>(null);
   const [activeTab, setActiveTab] = useState<string>("scan");
   const [selectedScan, setSelectedScan] = useState<(LawImpactScan & { id: string }) | null>(null);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   // regulations 컬렉션 구독
   const regulationsRef = useMemoFirebase(() => {
@@ -77,24 +62,14 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
   const saveScanResult = async (output: DetectLawImpactOutput, scannedLawText: string, scannedLawName?: string) => {
     if (!user || !scansRef) return;
 
-    const scanData: LawImpactScan = {
+    const scanData = buildScanData({
       userId: user.uid,
-      scannedAt: new Date().toISOString(),
       lawText: scannedLawText,
-      // 법령 이름을 입력한 경우에만 저장 (undefined는 Firestore가 거부함)
-      ...(scannedLawName ? { lawName: scannedLawName } : {}),
+      lawName: scannedLawName,
       regulationCount: regulations?.length || 0,
-      impactedCount: output.impactedRegulations.length,
-      impacts: output.impactedRegulations.map(r => ({
-        regulationId: r.regulationId,
-        regulationName: r.regulationName,
-        impactLevel: r.impactLevel,
-        reason: r.reason,
-        sourceArticle: r.sourceArticle ?? "",
-        diff: r.diff ?? "",
-      })),
-      summary: output.summary ?? "",
-    };
+      impactedRegulations: output.impactedRegulations,
+      summary: output.summary,
+    });
 
     try {
       await addDocument(scansRef, scanData);
@@ -139,6 +114,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
         }))
       });
       setResult(output);
+      setShowDisclaimer(true);
 
       // 결과 저장
       await saveScanResult(output, targetText, targetLawName);
@@ -160,13 +136,6 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
     }
   };
 
-  // 샘플 법령으로 스캔
-  const handleSampleScan = () => {
-    const sample = SAMPLE_LAWS[0]; // 근로기준법 개정
-    setLawText(sample.fullText);
-    setLawName(sample.name);
-    handleScan(sample.fullText, sample.name);
-  };
 
   // AI 자동 법령 스캔 (법령 입력 없이 AI가 알아서 분석)
   const handleAutoScan = async () => {
@@ -202,6 +171,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
       };
 
       setResult(formattedResult);
+      setShowDisclaimer(true);
 
       // 결과 저장
       await saveScanResult(formattedResult, "AI 자동 법령 스캔", "AI 자동 법령 스캔");
@@ -325,6 +295,13 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
 
   return (
     <div className="max-w-7xl mx-auto flex flex-col h-full gap-6">
+      {/* AI 결과 면책 안내 팝업 */}
+      <AiDisclaimerDialog
+        open={showDisclaimer}
+        onClose={() => setShowDisclaimer(false)}
+        context="scan"
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
@@ -362,25 +339,15 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
             <CardHeader className="pb-3 border-b bg-slate-50/50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-slate-700">법령 텍스트 입력</CardTitle>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSampleScan}
-                    disabled={loading}
-                    className="h-8 text-xs font-bold"
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    샘플 법령으로 스캔
-                  </Button>
+                <div className="flex items-center">
                   <Button
                     variant="default"
-                    size="sm"
+                    size="lg"
                     onClick={handleAutoScan}
                     disabled={loading}
-                    className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700"
+                    className="h-11 px-6 text-sm font-bold bg-emerald-600 hover:bg-emerald-700"
                   >
-                    <Bot className="w-3 h-3 mr-1" />
+                    <Bot className="w-5 h-5 mr-2" />
                     AI 법령 스캔
                   </Button>
                 </div>
@@ -578,13 +545,20 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
                         <Button
                           variant="default"
                           className="w-full"
-                          onClick={() => onRequestRevision?.({
-                            regulationId: impact.regulationId,
-                            regulationName: impact.regulationName,
-                            reason: impact.reason,
-                            sourceArticle: impact.sourceArticle,
-                            diff: impact.diff,
-                          })}
+                          onClick={() => {
+                            // AI가 출력한 regulationId가 비거나 실제 목록과 안 맞을 수 있으므로
+                            // 실제 규정 목록(regulations)에서 ID 또는 이름으로 매칭해 보정한다.
+                            const matched =
+                              regulations?.find((r) => r.id === impact.regulationId) ??
+                              regulations?.find((r) => r.fileName === impact.regulationName);
+                            onRequestRevision?.({
+                              regulationId: matched?.id ?? impact.regulationId,
+                              regulationName: matched?.fileName ?? impact.regulationName,
+                              reason: impact.reason,
+                              sourceArticle: impact.sourceArticle,
+                              diff: impact.diff,
+                            });
+                          }}
                         >
                           <PenTool className="w-4 h-4 mr-2" />
                           개정안 추천
@@ -618,7 +592,7 @@ export function LawImpactDetector({ onRequestRevision }: LawImpactDetectorProps)
             <div className="text-center">
               <p className="font-bold text-lg">아직 스캔 결과가 없습니다.</p>
               <p className="text-sm">법령 텍스트를 입력하고 스캔을 실행해주세요.</p>
-              <p className="text-xs mt-2">또는 [샘플 법령으로 스캔] 버튼으로 빠르게 테스트해보세요.</p>
+              <p className="text-xs mt-2">또는 [AI 법령 스캔] 버튼으로 빠르게 분석해보세요.</p>
             </div>
           </div>
         )}
